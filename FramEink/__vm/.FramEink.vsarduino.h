@@ -15,14 +15,13 @@
 #define _VSARDUINO_H_
 #define __INKPLATE_esp32__ 1
 #define __INKPLATE_ESP32__ 1
-#define _VMDEBUG 1
 #define ESP_PLATFORM 1
 #define MBEDTLS_CONFIG_FILE "mbedtls/esp_config.h"
 #define HAVE_CONFIG_H 1
 #define GCC_NOT_5_2_0 0
 #define WITH_POSIX 1
 #define F_CPU 240000000L
-#define ARDUINO 108019
+#define ARDUINO 108010
 #define ARDUINO_INKPLATE10 1
 #define ARDUINO_ARCH_INKPLATE 1
 #define ARDUINO_BOARD "INKPLATE10"
