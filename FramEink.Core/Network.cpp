@@ -16,17 +16,13 @@ Distributed as-is; no warranty is given.
 
 #include "Network.h"
 
-#include <HTTPClient.h>
-#include <WiFi.h>
-#include <WiFiClientSecure.h>
-
 #include <ArduinoJson.h>
 
 // Static Json from ArduinoJson library
 StaticJsonDocument<6000> doc;
 
 // Declared week days
-char weekDays[8][8] = {
+char weekDays[7][4] = {
     "Mon", "Tue", "Wed", "Thr", "Fri", "Sat", "Sun",
 };
 
@@ -137,6 +133,7 @@ bool Network::getDataCalendar(char *data)
     if (httpCode == 200)
     {
         long n = 0;
+        // Limito il while al max size del buffer 1000000L
         while (n + 4 < 1000000L && http.getStream().available()) // TODO: approfondire perché spesso non scarica tutti i dati
             data[n++] = http.getStream().read();
         data[n++] = 0;
@@ -200,7 +197,7 @@ void Network::getDataFromMetaWeather(int *timezone_offset, char *temp_min0, char
         }
     }
 
-    // Wake up if sleeping and save inital state
+    // Wake up if sleeping and save initial state
     bool sleep = WiFi.getSleep();
     WiFi.setSleep(false);
 

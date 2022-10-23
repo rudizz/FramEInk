@@ -90,7 +90,7 @@ char city[128] = "";
 // height of the weather strip
 int headerWeather = 40; // qui verrà aggiunto icon_height
 
-// Contants used for drawing icons
+// Constants used for drawing icons
 char abbrs[11][4] = { "13d", "sl", "h", "11d", "10d", "lr", "09d", "04d", "02d", "01d", "03d" };
 const uint8_t* logos[16] = { icon_sn, icon_sl, icon_h, icon_t, icon_hr, icon_lr, icon_s, icon_hc, icon_lc, icon_c, icon_hc };
 const uint8_t* s_logos[16] = { icon_s_sn, icon_s_sl, icon_s_h,  icon_s_t,  icon_s_hr,
@@ -189,7 +189,7 @@ void drawGrid();
 void getToFrom(char* dst, char* from, char* to, int* day, int* timeStamp, bool correctTimeZone);
 bool drawEvent(entry* event, int day, int beginY, int maxHeigth, int* heigthNeeded);
 int cmp(const void* a, const void* b);
-void drawData();
+void drawCalendarData();
 void drawWeatherIcon(int beginX, int beginY, int heightIcon);
 void drawWeatherStrip();
 bool stringContain(char* str1, char* pattern);
@@ -226,6 +226,10 @@ void setup()
     // Initial screen clearing
     display.clearDisplay();
 
+    // Attivo modalità Random su Photo
+    counterPortrait = -1;
+    counterLandscape = -1;
+
     if (!stateCalendar)
     {
         // Photo
@@ -257,7 +261,7 @@ void setup()
         drawInfo();
         drawBattery();
         drawGrid();
-        drawData();
+        drawCalendarData();
         drawTime();
 
         drawWeatherStrip();
@@ -624,7 +628,7 @@ bool stringContain(char* str1, char* pattern)
 }
 
 // Main data drawing data
-void drawData()
+void drawCalendarData()
 {
     long i = 0;
     long n = strlen(data);

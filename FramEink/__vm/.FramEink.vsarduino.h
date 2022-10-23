@@ -6,97 +6,92 @@
 			All non-arduino files created by visual micro and all visual studio project or solution files can be freely deleted and are not required to compile a sketch (do not delete your own code!).
 			Note: debugger breakpoints are stored in '.sln' or '.asln' files, knowledge of last uploaded breakpoints is stored in the upload.vmps.xml file. Both files are required to continue a previous debug session without needing to compile and upload again
 	
-	Hardware: Inkplate 10 (ESP32)                                                                                                                               (Croduino_Boards_Inkplate10), Platform=Inkplate, Package=Croduino_Boards
+	Hardware: Arduino Yún                                                                                                                                          (yun), Platform=avr, Package=arduino
 */
 
 #if defined(_VMICRO_INTELLISENSE)
 
 #ifndef _VSARDUINO_H_
 #define _VSARDUINO_H_
-#define __INKPLATE_esp32__ 1
-#define __INKPLATE_ESP32__ 1
-#define ESP_PLATFORM 1
-#define MBEDTLS_CONFIG_FILE "mbedtls/esp_config.h"
-#define HAVE_CONFIG_H 1
-#define GCC_NOT_5_2_0 0
-#define WITH_POSIX 1
-#define F_CPU 240000000L
+#define __AVR_atmega32u4__ 1
+#define __AVR_ATmega32U4__ 1
+#define __AVR_ATmega32u4__ 1
+#define F_CPU 16000000L
 #define ARDUINO 108010
-#define ARDUINO_INKPLATE10 1
-#define ARDUINO_ARCH_INKPLATE 1
-#define ARDUINO_BOARD "INKPLATE10"
-#define ARDUINO_VARIANT "Inkplate"
-#define ESP32 1
-#define CORE_DEBUG_LEVEL 0
-#define BOARD_HAS_PSRAM 1
+#define ARDUINO_AVR_YUN 1
+#define ARDUINO_ARCH_AVR 1
+#define USB_VID 0x2341
+#define USB_PID 0x8041
+#define USB_MANUFACTURER "\"Unknown\""
+#define USB_PRODUCT "\"Arduino
 #define __cplusplus 201103L
+#define _Pragma(x)
+#define __AVR__
 #define __inline__
-#define __asm__(x)
+#define __asm__(...)
 #define __extension__
-#define __ATTR_PURE__
-#define __ATTR_CONST__
 #define __inline__
 #define __volatile__
+// Redefine __cplusplus to correct version: https://www.visualmicro.com/forums/YaBB.pl?num=1592217268
+#undef __cplusplus
+#define __cplusplus 201103L
+
+//#define GCC_VERSION 40902
+//https://www.visualmicro.com/forums/YaBB.pl?num=1569762585/5#5
+#define __GNUC__             5
+#define __GNUC_MINOR__       4
+#define __GNUC_PATCHLEVEL__  0
+#define GCC_VERSION ((__GNUC__*10000)+(__GNUC_MINOR__*100)+__GNUC_PATCHLEVEL__)) 
 
 
-#define __ICCARM__
-#define __ASM
-#define __INLINE
-#define __builtin_va_list void
-//#define _GNU_SOURCE 
-//#define __GNUC__ 0
-//#undef  __ICCARM__
-//#define __GNU__
-
-typedef long Pio;
-typedef long Efc;
-typedef long Adc;
-typedef long Pwm;
-typedef long Rtc;
-typedef long Rtt;
-typedef long pRtc;
-typedef long Spi;
-typedef long spi;
-typedef long Ssc;
-//typedef long p_scc;
-typedef long Tc;
-//typedef long pTc;
-typedef long Twi;
-typedef long Wdt;
-//typedef long pTwi;
-typedef long Usart;
-typedef long Pdc;
-typedef long Rstc;
-
-extern const int ADC_MR_TRGEN_DIS = 0;
-extern const int ADC_MR_TRGSEL_ADC_TRIG0 = 0;
-extern const int ADC_MR_TRGSEL_Pos = 0;
-
-extern const int ADC_MR_TRGSEL_Msk = 0;
-extern const int ADC_MR_TRGEN = 0;
-extern const int ADC_TRIG_TIO_CH_0 = 0;
-extern const int ADC_MR_TRGSEL_ADC_TRIG1 = 0;
-extern const int ADC_TRIG_TIO_CH_1 = 0;
-extern const int ADC_MR_TRGSEL_ADC_TRIG2 = 0;
-extern const int ADC_MR_TRGSEL_ADC_TRIG3 = 0;
-
-#define __ARMCC_VERSION 400678
-#define __attribute__(noinline)
-
+#define volatile(va_arg) 
+#define _CONST
+#define __builtin_va_start
+#define __builtin_va_end
+#define __attribute__(...)
+#define NOINLINE __attribute__((noinline))
 #define prog_void
 #define PGM_VOID_P int
 
 
-            
-typedef unsigned char byte;
-extern "C" void __cxa_pure_virtual() {;}
+#ifndef __builtin_constant_p
+	#define __builtin_constant_p __attribute__((__const__))
+#endif
+#ifndef __builtin_strlen
+	#define __builtin_strlen  __attribute__((__const__))
+#endif
+
+
+#define NEW_H
+typedef void *__builtin_va_list;
+//extern "C" void __cxa_pure_virtual() {;}
+
+typedef int div_t;
+typedef int ldiv_t;
+
+
+typedef void *__builtin_va_list;
+//extern "C" void __cxa_pure_virtual() {;}
 
 
 
 #include <arduino.h>
 #include <pins_arduino.h> 
-#undef cli
-#define cli()
+//#undef F
+//#define F(string_literal) ((const PROGMEM char *)(string_literal))
+#undef PSTR
+#define PSTR(string_literal) ((const PROGMEM char *)(string_literal))
+
+//typedef unsigned char uint8_t;
+//typedef unsigned int uint8_t;
+
+#define pgm_read_byte_near(address_short) uint8_t()
+#define pgm_read_byte(address_short) uint8_t() 
+#define pgm_read_word(address_short) uint16_t() 
+#define pgm_read_dword(address_short) uint32_t()
+#define pgm_read_float(address_short) float()
+#define pgm_read_ptr(address_short)   short()
+
 #include "FramEink_10.ino"
 #endif
 #endif

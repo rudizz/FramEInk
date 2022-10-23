@@ -32,6 +32,21 @@ bool SDPhotoClass::getFilePath(char* filePath, const char* dirName, uint& counte
 	  // Warning, openNext starts at the current position of dir so a
 	  // rewind may be necessary in your application.
 		int contaCicli = -1;
+		// If counter == -1 -> take Random file
+		int fileCount = 0;
+		if (counter == -1) {
+			dir.rewindDirectory();
+			while (file.openNext(&dir, O_RDONLY)) {
+				if (file.size() > 4096 && !file.isHidden()) {
+					fileCount++;
+				}
+				file.close();
+			}
+			Serial.print("fileCount: ");
+			Serial.println(fileCount);
+			counter = random(fileCount);
+		}
+		dir.rewindDirectory();
 		bool fileFounded = false;
 		while (file.openNext(&dir, O_RDONLY)) {
 			if (file.size() > 4096) // Scarto tutti i file che non sono immagini

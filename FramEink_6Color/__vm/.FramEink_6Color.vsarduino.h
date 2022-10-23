@@ -6,98 +6,116 @@
 			All non-arduino files created by visual micro and all visual studio project or solution files can be freely deleted and are not required to compile a sketch (do not delete your own code!).
 			Note: debugger breakpoints are stored in '.sln' or '.asln' files, knowledge of last uploaded breakpoints is stored in the upload.vmps.xml file. Both files are required to continue a previous debug session without needing to compile and upload again
 	
-	Hardware: Inkplate 10 (ESP32)                                                                                                                               (Croduino_Boards_Inkplate10), Platform=Inkplate, Package=Croduino_Boards
+	Hardware: Inkplate 6COLOR (ESP32)                                                                                                                     (Inkplate_Boards_Inkplate6COLOR), Platform=esp32, Package=Inkplate_Boards
 */
 
 #if defined(_VMICRO_INTELLISENSE)
 
 #ifndef _VSARDUINO_H_
 #define _VSARDUINO_H_
-#define __INKPLATE_esp32__ 1
-#define __INKPLATE_ESP32__ 1
-#define _VMDEBUG 1
-#define ESP_PLATFORM 1
-#define MBEDTLS_CONFIG_FILE "mbedtls/esp_config.h"
+#define __ESP32_esp32__ 1
+#define __ESP32_ESP32__ 1
 #define HAVE_CONFIG_H 1
-#define GCC_NOT_5_2_0 0
+#define MBEDTLS_CONFIG_FILE "mbedtls/esp_config.h"
+#define UNITY_INCLUDE_CONFIG_H 1
 #define WITH_POSIX 1
+#define _GNU_SOURCE 1
+#define IDF_VER "v4.4-beta1-189-ga79dc75f0a"
+#define ESP_PLATFORM 1
+#define _POSIX_READER_WRITER_LOCKS 1
 #define F_CPU 240000000L
 #define ARDUINO 108010
-#define ARDUINO_INKPLATE10 1
-#define ARDUINO_ARCH_INKPLATE 1
-#define ARDUINO_BOARD "INKPLATE10"
+#define ARDUINO_INKPLATECOLOR 1
+#define ARDUINO_ARCH_ESP32 1
+#define ARDUINO_BOARD "INKPLATECOLOR"
 #define ARDUINO_VARIANT "Inkplate"
+#define ARDUINO_PARTITION_huge_app 1
 #define ESP32 1
 #define CORE_DEBUG_LEVEL 0
 #define BOARD_HAS_PSRAM 1
+#define ARDUINO_USB_CDC_ON_BOOT 0
 #define __cplusplus 201103L
+
+#define _Pragma(x)
+#undef __cplusplus
+#define __cplusplus 201103L
+
+#define __STDC__
+#define __ARM__
+#define __arm__
 #define __inline__
-#define __asm__(x)
+#define __asm__(...)
 #define __extension__
 #define __ATTR_PURE__
 #define __ATTR_CONST__
-#define __inline__
 #define __volatile__
 
-
-#define __ICCARM__
 #define __ASM
 #define __INLINE
-#define __builtin_va_list void
-//#define _GNU_SOURCE 
-//#define __GNUC__ 0
-//#undef  __ICCARM__
-//#define __GNU__
-
-typedef long Pio;
-typedef long Efc;
-typedef long Adc;
-typedef long Pwm;
-typedef long Rtc;
-typedef long Rtt;
-typedef long pRtc;
-typedef long Spi;
-typedef long spi;
-typedef long Ssc;
-//typedef long p_scc;
-typedef long Tc;
-//typedef long pTc;
-typedef long Twi;
-typedef long Wdt;
-//typedef long pTwi;
-typedef long Usart;
-typedef long Pdc;
-typedef long Rstc;
-
-extern const int ADC_MR_TRGEN_DIS = 0;
-extern const int ADC_MR_TRGSEL_ADC_TRIG0 = 0;
-extern const int ADC_MR_TRGSEL_Pos = 0;
-
-extern const int ADC_MR_TRGSEL_Msk = 0;
-extern const int ADC_MR_TRGEN = 0;
-extern const int ADC_TRIG_TIO_CH_0 = 0;
-extern const int ADC_MR_TRGSEL_ADC_TRIG1 = 0;
-extern const int ADC_TRIG_TIO_CH_1 = 0;
-extern const int ADC_MR_TRGSEL_ADC_TRIG2 = 0;
-extern const int ADC_MR_TRGSEL_ADC_TRIG3 = 0;
-
-#define __ARMCC_VERSION 400678
 #define __attribute__(noinline)
 
-#define prog_void
-#define PGM_VOID_P int
+//#define _STD_BEGIN
+//#define EMIT
+#define WARNING
+#define _Lockit
+#define __CLR_OR_THIS_CALL
+#define C4005
+//#define _NEW
 
+typedef bool _bool;
+typedef int _read;
+typedef int _seek;
+typedef int _write;
+typedef int _close;
+typedef int __cleanup;
 
-            
+//#define inline 
+
+#define __builtin_clz
+#define __builtin_clzl
+#define __builtin_clzll
+#define __builtin_labs
+#define __builtin_va_list
+typedef int __gnuc_va_list;
+
+#define __ATOMIC_ACQ_REL
+
+#define __CHAR_BIT__
+#define _EXFUN()
+
 typedef unsigned char byte;
 extern "C" void __cxa_pure_virtual() {;}
 
+typedef long __INTPTR_TYPE__ ;
+typedef long __UINTPTR_TYPE__ ;
+//typedef long __SIZE_TYPE__ 	;
+#define __SIZE_TYPE__ unsigned int
+typedef long __PTRDIFF_TYPE__;
 
+typedef long pthread_t;
+typedef long pthread_key_t;
+typedef long pthread_once_t;
+typedef long pthread_mutex_t;
+typedef long pthread_mutex_t;
+typedef long pthread_cond_t;
+
+#define __CHAR_BIT__ 1
+
+// Ensure ArduinoJSON Lib Intellisense works correctly
+#define ARDUINOJSON_ENABLE_STD_STREAM 0
 
 #include <arduino.h>
 #include <pins_arduino.h> 
-#undef cli
-#define cli()
+
+#define interrupts() sei()
+#define noInterrupts() cli()
+
+#define ESP_LOGI(tag, ...)
+
+// Read Value from Register
+#define READ_PERI_REG(addr)
+// Write Value to Register
+#define WRITE_PERI_REG(addr,val)
 #include "FramEink_6Color.ino"
 #endif
 #endif
