@@ -21,5 +21,68 @@
     <ClInclude Include="__vm\.FramEink_6Color.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="binary_Icons\icon_C.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_H.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_Hc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_Hr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_Lc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_Lr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_S.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_S_C.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_S_H.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_S_Hc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_S_Hr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_S_Lc - Copy.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_S_Lc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_S_Lr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_S_S.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_S_Sl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_S_Sn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_S_T.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_Sl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_Sn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\icon_T.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

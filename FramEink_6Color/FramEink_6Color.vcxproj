@@ -116,6 +116,27 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="binary_Icons\icon_C.h" />
+    <ClInclude Include="binary_Icons\icon_H.h" />
+    <ClInclude Include="binary_Icons\icon_Hc.h" />
+    <ClInclude Include="binary_Icons\icon_Hr.h" />
+    <ClInclude Include="binary_Icons\icon_Lc.h" />
+    <ClInclude Include="binary_Icons\icon_Lr.h" />
+    <ClInclude Include="binary_Icons\icon_S.h" />
+    <ClInclude Include="binary_Icons\icon_Sl.h" />
+    <ClInclude Include="binary_Icons\icon_Sn.h" />
+    <ClInclude Include="binary_Icons\icon_S_C.h" />
+    <ClInclude Include="binary_Icons\icon_S_H.h" />
+    <ClInclude Include="binary_Icons\icon_S_Hc.h" />
+    <ClInclude Include="binary_Icons\icon_S_Hr.h" />
+    <ClInclude Include="binary_Icons\icon_S_Lc - Copy.h" />
+    <ClInclude Include="binary_Icons\icon_S_Lc.h" />
+    <ClInclude Include="binary_Icons\icon_S_Lr.h" />
+    <ClInclude Include="binary_Icons\icon_S_S.h" />
+    <ClInclude Include="binary_Icons\icon_S_Sl.h" />
+    <ClInclude Include="binary_Icons\icon_S_Sn.h" />
+    <ClInclude Include="binary_Icons\icon_S_T.h" />
+    <ClInclude Include="binary_Icons\icon_T.h" />
     <ClInclude Include="__vm\.FramEink_6Color.vsarduino.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

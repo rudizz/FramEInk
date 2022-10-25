@@ -75,12 +75,12 @@ int headerCalendarName = 0;
 // header height, for day info
 int headerDay = 40;
 // margini della tabella
-int marginLeft = 3;
-int marginRight = 3;
-int marginUp = 0;
-int marginDown = 0;
-int colorGrid = 2;
-float thickLineGrid = 2.0;
+const int marginLeft = 1;
+const int marginRight = 1;
+const int marginUp = 1;
+const int marginDown = 2;
+const int colorGrid = INKPLATE_GREEN;
+const float thickLineGrid = 2.0;
 
 
 // WEATHER  -----------------
@@ -202,12 +202,12 @@ void setup()
     // calcolo le variabili iniziali in base all'orientamento
     if (ROTATION == 0 | ROTATION == 2)
     {
-        WIDTH = 600;
-        HEIGHT = 488;
+        WIDTH = display.width(); // 600
+        HEIGHT = display.height(); // 448
     }
     else {
-        WIDTH = 488;
-        HEIGHT = 600;
+        WIDTH = display.height();
+        HEIGHT = display.width();
     }
     cellWidth = (WIDTH - marginLeft - marginRight) / COLUMNS;
     cellHeight = (HEIGHT - HEIGHT_PHOTO - headerCalendarName - marginUp - marginDown) / ROWS;
@@ -363,7 +363,7 @@ void drawGrid()
     // Columns and rows
     int n = ROWS, m = COLUMNS;
 
-    display.fillRect(x1, y1, x2 - x1, 38, 6);
+    display.fillRect(x1, y1, x2 - x1, 38, INKPLATE_YELLOW);
 
     // Line drawing
 //    display.drawThickLine(x1, y1 + headerDay, x2, y1 + headerDay, colorGrid, thickLineGrid);
@@ -392,7 +392,7 @@ void drawGrid()
         network.getTime(temp, i * 3600L * 24);
         temp[10] = 0;
 
-        display.setCursor(70 + (int)((float)x1 + (float)(i % m) * (float)(x2 - x1) / (float)m), y1 + headerDay - 13 + (int)(i / m) * (float)(y2 - y1) / (float)n);
+        display.setCursor(40 + (int)((float)x1 + (float)(i % m) * (float)(x2 - x1) / (float)m), y1 + headerDay - 13 + (int)(i / m) * (float)(y2 - y1) / (float)n);
         display.println(temp);
     }
 }
@@ -774,13 +774,12 @@ void drawCalendarData()
 // ICON
 void drawWeatherIcon(int beginX, int beginY, int day)
 {
-    int color = 3;
     // Icon
     for (int i = 0; i < 11; ++i)
     {
         // If found draw specified icon
         if (strcmp(abbr_days[day], abbrs[i]) == 0)
-            display.drawBitmap(beginX, beginY, s_logos[i], icon_height, icon_height, color);
+            display.drawBitmap3Bit(beginX, beginY, s_logos[i], icon_height, icon_height);
     }
 }
 // weather info label
@@ -841,10 +840,10 @@ void drawWeatherStrip()
         drawWeatherIcon(xBegin, yBegin, day);
         drawWeatherLabel(xBegin, yBegin + headerWeather - 10, day);
         drawWeatherTemp(xBegin + icon_height + 20, yBegin + 40, day);
-        drawWeatherPredictability(xBegin + icon_height + 88, yBegin + 60, day);
+        drawWeatherPredictability(xBegin + icon_height + 20, yBegin + headerWeather - 10, day);
 
         // Riga orizzontale in basso. Delimita tempo da eventi calendario
-        display.drawThickLine(xBegin - padLeft + thickLineGrid, yBegin + headerWeather + padDown, xBegin - padLeft + cellWidth, yBegin + headerWeather + padDown, colorGrid + 3, thickLineGrid);
+        display.drawThickLine(xBegin - padLeft + thickLineGrid, yBegin + headerWeather + padDown, xBegin - padLeft + cellWidth, yBegin + headerWeather + padDown, colorGrid, thickLineGrid);
     }
 }
 
