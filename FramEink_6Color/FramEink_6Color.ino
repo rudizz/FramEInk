@@ -78,17 +78,23 @@ int headerDay = 40;
 const int marginLeft = 1;
 const int marginRight = 1;
 const int marginUp = 1;
-const int marginDown = 2;
-const int colorGrid = INKPLATE_GREEN;
+const int marginDown = 1;
+const uint16_t colorGrid = INKPLATE_GREEN;
 const float thickLineGrid = 2.0;
-
+const uint16_t colorCalendarTitle = INKPLATE_BLUE;
+const uint16_t colorCalendarTime = INKPLATE_RED;
+const uint16_t colorCalendarLocation = INKPLATE_GREEN;
 
 // WEATHER  -----------------
 // City filled by query
 char city[128] = "";
-#define icon_height 96
+#define icon_height 88
 // height of the weather strip
 int headerWeather = 40; // qui verrà aggiunto icon_height
+const uint16_t colorDayTitle = INKPLATE_BLACK;
+const uint16_t colorWeatherTempMax = INKPLATE_RED;
+const uint16_t colorWeatherTempMin = INKPLATE_BLUE;
+const uint16_t colorWeatherName = INKPLATE_BLACK;
 
 // Constants used for drawing icons
 char abbrs[11][4] = { "13d", "sl", "h", "11d", "10d", "lr", "09d", "04d", "02d", "01d", "03d" };
@@ -170,7 +176,7 @@ char* data;
 struct entry
 {
     char name[128];
-    char time[16];
+    char time[12];
     char location[64];
     int day = -1;
     int timeStamp;
@@ -212,7 +218,7 @@ void setup()
     cellWidth = (WIDTH - marginLeft - marginRight) / COLUMNS;
     cellHeight = (HEIGHT - HEIGHT_PHOTO - headerCalendarName - marginUp - marginDown) / ROWS;
 
-    headerWeather = headerWeather + icon_height;
+    headerWeather += icon_height;
 
     // Initial display settings
     display.begin();
@@ -385,6 +391,7 @@ void drawGrid()
     }
     // Stampo la scritta dei giorni del calendario
     display.setFont(&FreeSansBold12pt7b);
+    display.setTextColor(colorDayTitle);
     for (int i = 0; i < m * n; ++i)
     {
         // Display day info using time offset
@@ -498,8 +505,8 @@ bool drawEvent(entry* event, int day, int beginY, int maxHeigth, int* heigthNeed
     int y1 = beginY + 3;
 
     // Setting text font
-    display.setFont(&FreeSansBold18pt7b);
-
+    display.setFont(&FreeSansBold12pt7b);
+    display.setTextColor(colorCalendarTitle);
     //    // Draw background // lascio commentato, risulta troppo scuro
     //    display.fillRect(x1, y1, cellWidth - 2 * padLeftRight, 110, 6);
 
@@ -509,7 +516,7 @@ bool drawEvent(entry* event, int day, int beginY, int maxHeigth, int* heigthNeed
 
     // Insert line brakes into setTextColor
     int lastSpace = -100;
-    display.setCursor(x1 + 5, beginY + 45);
+    display.setCursor(x1 + 5, beginY + 40);
     for (int i = 0; i < min((size_t)64, strlen(event->name)); ++i)
     {
         // Copy name letter by letter and check if it overflows space given
@@ -525,7 +532,7 @@ bool drawEvent(entry* event, int day, int beginY, int maxHeigth, int* heigthNeed
         display.getTextBounds(line, 0, 0, &xt1, &yt1, &w, &h);
 
         // Char out of bounds, put in next line
-        if (w > cellWidth - 2 * padLeftRight - 42) // cambiare l'ultimo numero che cambiare quando andare a capo
+        if (w > cellWidth - 2 * padLeftRight - 42) // cambiare l'ultimo numero che definisce quando andare a capo
         {
             // if there was a space 5 chars before, break line there
             if (n - lastSpace < 5)
@@ -535,7 +542,7 @@ bool drawEvent(entry* event, int day, int beginY, int maxHeigth, int* heigthNeed
             }
 
             // Print text line
-            display.setCursor(x1 + 5, display.getCursorY());
+            display.setCursor(x1 + 5, display.getCursorY()-5);
             display.println(line);
 
             // Clears line (null termination on first charachter)
@@ -550,17 +557,19 @@ bool drawEvent(entry* event, int day, int beginY, int maxHeigth, int* heigthNeed
 
     // Set cursor on same y but change x
     display.setCursor(x1 + 5, display.getCursorY() - 10);
-    display.setFont(&FreeSans12pt7b);
+    display.setFont(&FreeSans9pt7b);
 
     // Print time
     // also, if theres a location print it
     if (strlen(event->location) != 1)
     {
+        display.setTextColor(colorCalendarTime);
         display.println(event->time);
 
         display.setCursor(x1 + 5, display.getCursorY());
 
         char line[128] = { 0 };
+        display.setTextColor(colorCalendarLocation);
 
         for (int i = 0; i < strlen(event->location); ++i)
         {
@@ -585,6 +594,7 @@ bool drawEvent(entry* event, int day, int beginY, int maxHeigth, int* heigthNeed
     }
     else
     {
+        display.setTextColor(colorCalendarTime);
         display.print(event->time);
     }
 
@@ -754,10 +764,10 @@ void drawCalendarData()
             // Draw notification showing that there are more events than drawn ones
             int xBegin = marginLeft + cellWidth * (i % COLUMNS) + thickLineGrid;
             int yBegin = marginUp + headerCalendarName + (i / COLUMNS) * cellHeight + cellHeight - 23;
-            display.fillRoundRect(5 + xBegin, yBegin, cellWidth - 10, 20, 10, 6);
+            display.fillRoundRect(5 + xBegin, yBegin, cellWidth - 10, 20, 10, INKPLATE_YELLOW);
             display.setCursor(15 + xBegin, yBegin + 15);
             //            display.setTextColor(7, 0);
-            display.setTextColor(BLACK, WHITE);
+            display.setTextColor(INKPLATE_BLACK, INKPLATE_WHITE);
             display.setFont(&FreeSans9pt7b);
             display.print(cloggedCount[i]);
             display.print(" more event");
@@ -794,8 +804,8 @@ void drawWeatherLabel(int x, int y, int day)
     //    }
 
         // Draw weather state
-    display.setTextColor(BLACK, WHITE);
-    display.setFont(&FreeSans18pt7b);
+    display.setTextColor(colorWeatherName, INKPLATE_WHITE);
+    display.setFont(&FreeSansBold12pt7b);
     display.setTextSize(1);
     display.setCursor(x, y);
     display.println(nameWeather[day]);
@@ -805,26 +815,29 @@ void drawWeatherLabel(int x, int y, int day)
 void drawWeatherTemp(int x, int y, int day)
 {
     // Temp Max
-    display.setFont(&FreeSans18pt7b);
+    display.setFont(&FreeSansBold12pt7b);
+    display.setTextColor(colorWeatherTempMax);
     display.setCursor(x, y);
     display.print(temps_max[day]);
-    display.setFont(&FreeSans12pt7b);
+    display.setFont(&FreeSans9pt7b);
     display.println("° C");
     // Temp Min
-    display.setFont(&FreeSans18pt7b);
+    display.setFont(&FreeSansBold12pt7b);
+    display.setTextColor(colorWeatherTempMin);
     display.setCursor(x, y + 40);
     display.print(temps_min[day]);
-    display.setFont(&FreeSans12pt7b);
+    display.setFont(&FreeSans9pt7b);
     display.println(F("° C"));
 }
 // PREDICTABILITY
 void drawWeatherPredictability(int x, int y, int day)
 {
     // Predictability
-    display.setFont(&FreeSans18pt7b);
+    display.setFont(&FreeSansBold12pt7b);
+    display.setTextColor(colorWeatherName);
     display.setCursor(x, y);
     display.print(predictability[day]);
-    display.setFont(&FreeSans12pt7b);
+    display.setFont(&FreeSans9pt7b);
     display.println("%");
 }
 
