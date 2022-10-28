@@ -34,10 +34,12 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeMonoOblique24pt7b.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeMonoOblique9pt7b.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSans12pt7b.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSans16pt7b.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSans18pt7b.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSans24pt7b.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSans9pt7b.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSansBold12pt7b.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSansBold16pt7b.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSansBold18pt7b.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSansBold24pt7b.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSansBold9pt7b.h" />
@@ -73,7 +75,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\Roboto_Light_48.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\Tiny3x3a2pt7b.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\TomThumb.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)icons.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Network.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)SDPhoto.h" />
   </ItemGroup>

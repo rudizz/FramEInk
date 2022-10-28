@@ -249,6 +249,9 @@
     <ClInclude Include="binary_Icons\icon_T.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="icons_1bit.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="icons\c.png">

@@ -64,9 +64,10 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\Roboto_Light_48.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\Tiny3x3a2pt7b.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\TomThumb.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)icons.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Network.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)SDPhoto.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSans16pt7b.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSansBold16pt7b.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="$(MSBuildThisFileDirectory)icons\c.png" />
