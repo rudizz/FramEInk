@@ -45,11 +45,14 @@ bool SDPhotoClass::getFilePath(char* filePath, const char* dirName, uint& counte
 			Serial.print("fileCount: ");
 			Serial.println(fileCount);
 			counter = random(fileCount);
+
+			Serial.print("Random Index: ");
+			Serial.println(counter);
 		}
 		dir.rewindDirectory();
 		bool fileFounded = false;
 		while (file.openNext(&dir, O_RDONLY)) {
-			if (file.size() > 4096) // Scarto tutti i file che non sono immagini
+			if (file.size() > 4096 && !file.isHidden()) // Scarto tutti i file che non sono immagini
 			{
 				++contaCicli;
 				if (counter == contaCicli)

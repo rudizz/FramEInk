@@ -17,6 +17,7 @@ Distributed as-is; no warranty is given.
 #include "Network.h"
 
 #include <ArduinoJson.h>
+#include <uICAL.h>
 
 // Static Json from ArduinoJson library
 StaticJsonDocument<6000> doc;
@@ -132,10 +133,41 @@ bool Network::getDataCalendar(char *data)
 
     if (httpCode == 200)
     {
+        //String length = http.getStream().readStringUntil('\n');
+        //Serial.println("Test1");
+        //uICAL::Calendar_ptr cal = nullptr;
+        //try
+        //{
+        //    Serial.println("Test2");
+        //    uICAL::istream_Stream istm(http.getStream());
+        //    Serial.println("Test3");
+        //    cal = uICAL::Calendar::load(istm);
+        //    Serial.println("Test4");
+        //}
+        //catch (uICAL::Error ex) {
+        //    Serial.println(sprintf("%s: %s", ex.message.c_str(), "! Failed loading calendar"));
+        //    //stop();
+        //}
+
+        //unsigned now = g_ntpClient.getUnixTime();
+
+        //uICAL::DateTime calBegin(now);
+        //uICAL::DateTime calEnd(now + 86400);
+
         long n = 0;
+        long timeCal = millis();
         // Limito il while al max size del buffer 1000000L
-        while (n + 4 < 1000000L && http.getStream().available()) // TODO: approfondire perché spesso non scarica tutti i dati
+        while (n + 4 < 1000000L && http.getStream().available()) {
             data[n++] = http.getStream().read();
+            if (!http.getStream().available()) // aggiungo questo controllo altrimenti esce prima di aver scaricato tutto
+            {
+                delay(10);
+                Serial.println("Calendar waiting...");
+            }
+        } 
+        Serial.print("Calendar downloaded in [ms]: ");
+        Serial.println(millis() - timeCal);
+
         data[n++] = 0;
     }
     else

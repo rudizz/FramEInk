@@ -24,5 +24,109 @@
     <ClInclude Include="icons_color.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="binary_Icons\autumn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\celsius.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\celsius_2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\celsius_60.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\celsius_70.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\color_01d_clear.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\color_02d_few_clouds.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\color_03d_scattered_clouds.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\color_4d_broken_clouds.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\color_09d_shower_rain.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\color_10d_rain.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\color_11d_thunderstorm.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\color_13d_snow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\color_13d_snow_2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\color_50d_mist.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\termometro.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\color_04d_broken_clouds.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\yellow_white.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="binary_Icons\icon_color\autumn.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\celsius.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\celsius_2.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\cloud.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\color_01d_clear.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\color_02d_few_clouds.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\color_03d_scattered_clouds.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\color_04d_broken_clouds.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\color_09d_shower_rain.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\color_10d_rain.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\color_11d_thunderstorm.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\color_13d_snow.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\color_13d_snow_2.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\color_50d_mist.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\storm.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\warm.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>

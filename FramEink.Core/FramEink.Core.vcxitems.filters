@@ -68,17 +68,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)SDPhoto.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSans16pt7b.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSansBold16pt7b.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="$(MSBuildThisFileDirectory)icons\c.png" />
-    <Image Include="$(MSBuildThisFileDirectory)icons\h.png" />
-    <Image Include="$(MSBuildThisFileDirectory)icons\hc.png" />
-    <Image Include="$(MSBuildThisFileDirectory)icons\hr.png" />
-    <Image Include="$(MSBuildThisFileDirectory)icons\lc.png" />
-    <Image Include="$(MSBuildThisFileDirectory)icons\lr.png" />
-    <Image Include="$(MSBuildThisFileDirectory)icons\s.png" />
-    <Image Include="$(MSBuildThisFileDirectory)icons\sl.png" />
-    <Image Include="$(MSBuildThisFileDirectory)icons\sn.png" />
-    <Image Include="$(MSBuildThisFileDirectory)icons\t.png" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSansSerifBold14pt7b.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSansSerif14pt7b.h" />
   </ItemGroup>
 </Project>
