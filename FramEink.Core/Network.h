@@ -47,7 +47,8 @@ class Network
                       char *predictability0, char *predictability1, char *predictability2, char *predictability3, char *predictability4, char *predictability5,
                       char *currentWind, char *currentTime, char *currentWeather0, char *currentWeather1,
                       char *currentWeather2, char *currentWeather3, char *currentWeather4, char *currentWeather5,
-                      char *abbr0, char *abbr1, char *abbr2, char *abbr3, char *abbr4, char *abbr5);
+                      char *abbr0, char *abbr1, char *abbr2, char *abbr3, char *abbr4, char *abbr5,
+                      float* moon_phase0, float* moon_phase1, float* moon_phase2, float* moon_phase3, float* moon_phase4, float* moon_phase5);
     void getDaysLabel(char *day, char *day1, char *day2, char *day3);
 
     // Used to store loaction woeid (world id), set in findCity()

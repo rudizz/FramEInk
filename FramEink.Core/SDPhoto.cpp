@@ -17,7 +17,10 @@ SDPhotoClass::SDPhotoClass(Inkplate* _display)
 		initOk = true;
 	} else {
 		// If SD card init not success, display error on screen
+		display->setCursor(30, 30);
+		display->setTextColor(0, 7);
 		display->println("SD Card error!");
+		Serial.println("SD Card error!");
 	}
 
 }

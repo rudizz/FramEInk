@@ -202,7 +202,8 @@ void Network::getDataFromMetaWeather(int *timezone_offset, char *temp_min0, char
                       char *predictability0, char *predictability1, char *predictability2, char *predictability3, char *predictability4, char *predictability5,
                       char *currentWind, char *currentTime, char *currentWeather0, char *currentWeather1,
                       char *currentWeather2, char *currentWeather3, char *currentWeather4, char *currentWeather5,
-                      char *abbr0, char *abbr1, char *abbr2, char *abbr3, char *abbr4, char *abbr5)
+                      char *abbr0, char *abbr1, char *abbr2, char *abbr3, char *abbr4, char *abbr5,
+                      float *moon_phase0, float *moon_phase1, float *moon_phase2, float *moon_phase3, float *moon_phase4, float *moon_phase5)
 {
     // If not connected to wifi reconnect wifi
     if (WiFi.status() != WL_CONNECTED)
@@ -243,6 +244,7 @@ void Network::getDataFromMetaWeather(int *timezone_offset, char *temp_min0, char
     char url[256];
     //sprintf(url, "https://www.metaweather.com/api/location/%d/", location);
     sprintf(url, "https://api.openweathermap.org/data/3.0/onecall?units=metric&exclude=current,minutely,hourly,alerts&lat=%.4f&lon=%.4f&appid=136b1eed9485c22eee88ea1c437650af", latitude, longitude);
+    // https://api.openweathermap.org/data/3.0/onecall?units=metric&exclude=current,minutely,hourly,alerts&lat=48.150914&lon=11.567003&appid=136b1eed9485c22eee88ea1c437650af
 
     // Initiate http
     http.begin(url);
@@ -309,6 +311,13 @@ void Network::getDataFromMetaWeather(int *timezone_offset, char *temp_min0, char
                 formatTemp(predictability3, doc["daily"][3][F("pop")].as<float>() * 100);
                 formatTemp(predictability4, doc["daily"][4][F("pop")].as<float>() * 100);
                 formatTemp(predictability5, doc["daily"][5][F("pop")].as<float>() * 100);
+                // Moon Phase
+                *moon_phase0 = doc["daily"][0][F("moon_phase")].as<float>();
+                *moon_phase1 = doc["daily"][1][F("moon_phase")].as<float>();
+                *moon_phase2 = doc["daily"][2][F("moon_phase")].as<float>();
+                *moon_phase3 = doc["daily"][3][F("moon_phase")].as<float>();
+                *moon_phase4 = doc["daily"][4][F("moon_phase")].as<float>();
+                *moon_phase5 = doc["daily"][5][F("moon_phase")].as<float>();
             }
         }
     }

@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="FramEink_6Color.ino" />
+    <None Include="binary_Icons\icon_color\moon_phases\moon_phase_0_25_pattern.xcf" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="__vm\.FramEink_6Color.vsarduino.h">
@@ -78,54 +79,219 @@
     <ClInclude Include="binary_Icons\yellow_white.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="fonts.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_04.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_08.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_11.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_15.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_18.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_21.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_25.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_29.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_33.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_36.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_40.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_43.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_47.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_50.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_54.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_58.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_61.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_65.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_69.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_73.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_77.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_81.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_85.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_89.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_93.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_96.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="binary_Icons\icon_color\autumn.bmp">
+    <Image Include="binary_Icons\icon_color\weather\autumn.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="binary_Icons\icon_color\celsius.bmp">
+    <Image Include="binary_Icons\icon_color\weather\celsius.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="binary_Icons\icon_color\celsius_2.bmp">
+    <Image Include="binary_Icons\icon_color\weather\celsius_2.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="binary_Icons\icon_color\cloud.bmp">
+    <Image Include="binary_Icons\icon_color\weather\cloud.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="binary_Icons\icon_color\color_01d_clear.bmp">
+    <Image Include="binary_Icons\icon_color\weather\color_01d_clear.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="binary_Icons\icon_color\color_02d_few_clouds.bmp">
+    <Image Include="binary_Icons\icon_color\weather\color_02d_few_clouds.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="binary_Icons\icon_color\color_03d_scattered_clouds.bmp">
+    <Image Include="binary_Icons\icon_color\weather\color_03d_scattered_clouds.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="binary_Icons\icon_color\color_04d_broken_clouds.bmp">
+    <Image Include="binary_Icons\icon_color\weather\color_04d_broken_clouds.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="binary_Icons\icon_color\color_09d_shower_rain.bmp">
+    <Image Include="binary_Icons\icon_color\weather\color_09d_shower_rain.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="binary_Icons\icon_color\color_10d_rain.bmp">
+    <Image Include="binary_Icons\icon_color\weather\color_10d_rain.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="binary_Icons\icon_color\color_11d_thunderstorm.bmp">
+    <Image Include="binary_Icons\icon_color\weather\color_11d_thunderstorm.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="binary_Icons\icon_color\color_13d_snow.bmp">
+    <Image Include="binary_Icons\icon_color\weather\color_13d_snow.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="binary_Icons\icon_color\color_13d_snow_2.bmp">
+    <Image Include="binary_Icons\icon_color\weather\color_13d_snow_2.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="binary_Icons\icon_color\color_50d_mist.bmp">
+    <Image Include="binary_Icons\icon_color\weather\color_50d_mist.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="binary_Icons\icon_color\storm.bmp">
+    <Image Include="binary_Icons\icon_color\weather\storm.bmp">
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="binary_Icons\icon_color\warm.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_04.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_08.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_11.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_15.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_18.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_21.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_25.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_29.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_33.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_36.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_40.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_43.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_47.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_50.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_54.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_58.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_61.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_65.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_69.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_73.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_77.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_81.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_85.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_89.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_93.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_96.bmp">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
