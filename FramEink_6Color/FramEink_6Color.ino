@@ -877,10 +877,12 @@ void drawWeatherPredictability(int x, int y, int day)
     // Predictability
     display.setFont(&FreeSans16pt7b);
     display.setTextColor(colorWeatherName);
-    display.setCursor(x, y);
-    display.print(predictability[day]);
+    //display.setCursor(x, y);
+    drawCentreString(predictability[day], x, y);
+    //display.print(predictability[day]);
     display.setFont(&FreeSans9pt7b);
-    display.println("%");
+    display.setCursor(display.getCursorX(), display.getCursorY()-2);
+    display.print("%");
 }
 
 void drawWeatherStrip()
@@ -900,7 +902,7 @@ void drawWeatherStrip()
             strcmp(abbr_days[day], "10d") == 0 ||
             strcmp(abbr_days[day], "11d") == 0)
         {
-            drawWeatherPredictability(xBegin + icon_height + 20, yBegin + headerWeather - 7, day);
+            drawWeatherPredictability(xBegin + icon_height + 41, yBegin + headerWeather - 18, day);
         }
         else
         {
@@ -917,5 +919,20 @@ void drawWeatherStrip()
         // Riga orizzontale in basso. Delimita tempo da eventi calendario
         display.drawThickLine(xBegin - padLeft + thickLineGrid, yBegin + headerWeather + padDown, xBegin - padLeft + cellWidth, yBegin + headerWeather + padDown, colorGrid, thickLineGrid);
     }
+}
+
+void drawCentreString(const char* text, int x, int y)
+{
+    int16_t x1, y1;
+    uint16_t w, h;
+    display.getTextBounds(text, 0, 0, &x1, &y1, &w, &h); //calc width of new string
+
+    //Serial.println(x);
+    //Serial.println(y);
+    //Serial.println(w);
+    //Serial.println(h);
+    //Serial.println("");
+    display.setCursor(x - (w / 2), y + (h / 2));
+    display.print(text);
 }
 
