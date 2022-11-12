@@ -156,13 +156,16 @@ bool Network::getDataCalendar(char *data)
 
         long n = 0;
         long timeCal = millis();
+        size_t conta = 0;
         // Limito il while al max size del buffer 1000000L
         while (n + 4 < 1000000L && http.getStream().available()) {
             data[n++] = http.getStream().read();
-            if (!http.getStream().available()) // aggiungo questo controllo altrimenti esce prima di aver scaricato tutto
+            conta = 0;
+            while (!http.getStream().available() && conta < 10) // aggiungo questo controllo altrimenti esce prima di aver scaricato tutto
             {
                 delay(10);
                 Serial.println("Calendar waiting...");
+                conta++;
             }
         } 
         Serial.print("Calendar downloaded in [ms]: ");

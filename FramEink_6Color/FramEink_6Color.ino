@@ -64,7 +64,7 @@ int cellWidth, cellHeight;
 // header size for calendar name and current Time
 int headerCalendarName = 0;
 // header height, for day info
-int headerDay = 40;
+int headerDay = 36;
 // margini della tabella
 const int marginLeft = 1;
 const int marginRight = 2;
@@ -375,9 +375,15 @@ void drawGrid()
 
     // Columns and rows
     int n = ROWS, m = COLUMNS;
-
-    display.drawBitmap3Bit(x1, y1, yellow_white, x2 - x1, 36);
-    display.fillRect(x1, 36, x2 - x1, 3, INKPLATE_YELLOW);
+    for (size_t row = 0; row < headerDay; row+=yellow_white_h)
+    {
+        for (size_t col = 0; col < x2; col+=yellow_white_w)
+        {
+            display.drawBitmap3Bit(x1 + col, y1 + row, yellow_white, yellow_white_w, yellow_white_h);
+        }
+    }
+    //display.drawBitmap3Bit(x1, y1, yellow_white, x2 - x1, 36);
+    display.fillRect(x1, headerDay, x2 - x1, 3, INKPLATE_YELLOW);
 
     // Line drawing
 //    display.drawThickLine(x1, y1 + headerDay, x2, y1 + headerDay, colorGrid, thickLineGrid);
@@ -407,7 +413,7 @@ void drawGrid()
         network.getTime(temp, i * 3600L * 24);
         temp[10] = 0;
 
-        display.setCursor(40 + (int)((float)x1 + (float)(i % m) * (float)(x2 - x1) / (float)m), y1 + headerDay - 13 + (int)(i / m) * (float)(y2 - y1) / (float)n);
+        display.setCursor(40 + (int)((float)x1 + (float)(i % m) * (float)(x2 - x1) / (float)m), y1 + headerDay - 9 + (int)(i / m) * (float)(y2 - y1) / (float)n);
         display.println(temp);
     }
 }
@@ -725,7 +731,7 @@ void drawCalendarData()
 
 //        for (int seq = 0; seq <= atoi(sequence)
 
-
+        // Se il titolo è troppo lungo, lo tronco e aggiungo ... alla fine
         if (summary && summary < end)
         {
             int lengthSummary = strchr(summary, '\n') - summary;
@@ -888,7 +894,7 @@ void drawWeatherPredictability(int x, int y, int day)
 void drawWeatherStrip()
 {
     int padLeft = 15;
-    int padUp = -2;
+    int padUp = 2;
     int padDown = 5;
     for (int day = 0; day < COLUMNS * ROWS; day++)
     {
