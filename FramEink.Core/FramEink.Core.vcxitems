@@ -79,9 +79,12 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\TomThumb.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Network.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)SDPhoto.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)WiFiAccessPoint\HTMLSettingsPage.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)WiFiAccessPoint\WiFiAPSettings.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)Network.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)SDPhoto.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)WiFiAccessPoint\WiFiAPSettings.cpp" />
   </ItemGroup>
 </Project>

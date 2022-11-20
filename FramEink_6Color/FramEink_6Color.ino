@@ -35,8 +35,8 @@
 #endif
 
 // Include Inkplate library to the sketch
-#include "SDPhoto.h"
 #include "Inkplate.h"
+#include "SDPhoto.h"
 
 #include "fonts.h"
 #include "icons_color.h"
@@ -45,6 +45,9 @@
 #include <algorithm>
 #include <ctime>
 #include <uICAL.h>
+
+#include "WiFiAccessPoint/WiFiAPSettings.h"
+//#include "WiFiAccessPoint/HTMLSettingsPage.h"
 
 // CHANGE HERE ---------------
 char ssid[] = "Baghini";
@@ -75,6 +78,11 @@ const float thickLineGrid = 2.0;
 const uint16_t colorCalendarTitle = INKPLATE_BLUE;
 const uint16_t colorCalendarTime = INKPLATE_RED;
 const uint16_t colorCalendarLocation = INKPLATE_GREEN;
+
+// WiFi AP Settings
+WiFiAPSettingsClass* wiFiAPSettings = NULL;
+RTC_DATA_ATTR bool settingsOK = false; // viene messa a true dopo che vengono settati i parametri, 
+                                       // così non compare più la pagina dei Settings
 
 // WEATHER  -----------------
 // City filled by query
@@ -209,6 +217,7 @@ void setup()
 {
     Serial.begin(115200);
     Serial.println("Inizializzo...");
+    delay(2000); // TODO remove
 
     // calcolo le variabili iniziali in base all'orientamento
     if (ROTATION == 0 | ROTATION == 2)
@@ -230,10 +239,17 @@ void setup()
 
     display.setRotation(ROTATION);
     display.setTextWrap(false);
-    display.setTextColor(0, 7);
 
-    // Initial screen clearing
-    display.clearDisplay();
+    if (!settingsOK)
+    {
+        wiFiAPSettings = new WiFiAPSettingsClass();
+        wiFiAPSettings->init();
+        drawSettings();
+        wiFiAPSettings->loop(); // esco dopo 5 minuti
+        settingsOK = true;
+    }
+
+    display.setTextColor(0, 7);
 
     sdPhoto = new SDPhotoClass(&display);
 
@@ -241,6 +257,7 @@ void setup()
     {
         // Photo
         counterLandscape = -1;
+        display.clearDisplay();
         sdPhoto->drawImageFromSD(0, 0, SDPhotoClass::PhotoOrientation::landscape, counterLandscape);
     }
     else {
@@ -266,6 +283,7 @@ void setup()
 
         //Serial.println(data); // stampo i dati grezzi del calendario
         // Drawing all data, functions for that are above
+        display.clearDisplay();
 
         //drawInfo();
         //drawBattery();
@@ -283,8 +301,7 @@ void setup()
     // Can't do partial due to deepsleep
     display.display();
 
-    Serial.print("counterPortrait: ");
-    Serial.println(counterPortrait);
+    Serial.printf("counterPortrait: %d\n", counterPortrait);
 
     // Se si sveglia tra le 23:00 e l' 1:59, imposto a 6 ore il tempo di sleep
     int timeHour;
@@ -786,7 +803,7 @@ void drawCalendarData()
         // We store how much height did one event take up
         int shift = 0;
         int padDown = 5;
-        int padUp = 8;
+        int padUp = 9;
         bool s = drawEvent(&entries[i], entries[i].day, columns[entries[i].day] + (entries[i].day / COLUMNS) * cellHeight + marginUp + headerCalendarName + headerDay + headerWeather + padUp,
             (entries[i].day / COLUMNS) * cellHeight + marginUp + headerCalendarName + cellHeight, &shift);
 
@@ -906,7 +923,8 @@ void drawWeatherStrip()
         // If the weather icon is with rain, print the rain probability
         if (strcmp(abbr_days[day], "09d") == 0 ||
             strcmp(abbr_days[day], "10d") == 0 ||
-            strcmp(abbr_days[day], "11d") == 0)
+            strcmp(abbr_days[day], "11d") == 0 ||
+            strcmp(abbr_days[day], "13d") == 0) // Snow
         {
             drawWeatherPredictability(xBegin + icon_height + 41, yBegin + headerWeather - 18, day);
         }
@@ -925,6 +943,63 @@ void drawWeatherStrip()
         // Riga orizzontale in basso. Delimita tempo da eventi calendario
         display.drawThickLine(xBegin - padLeft + thickLineGrid, yBegin + headerWeather + padDown, xBegin - padLeft + cellWidth, yBegin + headerWeather + padDown, colorGrid, thickLineGrid);
     }
+}
+void drawSettings()
+{                              // This function updates screen with new data (text)
+    display.clearDisplay();               // Clear frame buffer of display
+    display.setFont(&FreeSans16pt7b);
+    display.setTextWrap(false);            // If text does not fit on screen, send it to new line
+
+    display.setTextColor(INKPLATE_BLACK);
+    display.setCursor(15, 60); // Print out instruction on how to connect to Inkplate WiFi and how to open a web page
+    display.print("1. Connect to ");
+    display.setTextColor(INKPLATE_RED);
+    display.print(wiFiAPSettings->SSID_Settings);
+    display.setTextColor(INKPLATE_BLACK);
+    display.println(" WiFi");
+
+    display.setCursor(15, 120);
+    display.println("2. Open your web browser and");
+    display.setCursor(display.getCursorX() + 60, display.getCursorY());
+    display.print("go to: ");
+
+    display.setTextColor(INKPLATE_GREEN);
+    //display.setCursor(35, 140);
+    display.print("http://");
+    display.print(wiFiAPSettings->serverIP);
+    display.println('/');
+    display.println();
+
+    display.setTextColor(INKPLATE_BLACK);
+    display.setCursor(15, 220);
+    display.println("3. Fill the information and press");
+    display.setTextColor(INKPLATE_ORANGE);
+    display.setCursor(display.getCursorX() + 60, display.getCursorY());
+    display.print("Send to FramEInk! ");
+
+    //display.fillRect(10, 240, 780, 4, INKPLATE_YELLOW);
+    
+    display.setTextColor(INKPLATE_RED);
+    display.setCursor(35, 300);
+    drawCentreString("This page will remain", WIDTH / 2, 320);
+    display.println("");
+    //fprintf("active for %s minutes", wiFiAPSettings->settingDuration);
+    drawCentreString("active for %s minutes", WIDTH / 2, display.getCursorY());
+    
+    // Draw rounded orange rect
+    uint8_t thick = 5;
+    for (size_t i = 0; i < thick; i++)
+    {
+        display.drawRoundRect(55+i, 280+i, WIDTH - 1 - 110 - 2*i, display.getCursorY() - 280 + 30 - 2*i, 10, INKPLATE_ORANGE);
+    }
+
+    // Draw green rect
+    for (size_t i = 0; i < thick; i++)
+    {
+        display.drawRect(i, i, WIDTH - 1 - 2 * i, HEIGHT - 1 - 2 * i, INKPLATE_GREEN);
+    }
+
+    display.display(); // Send everything to screen (refresh the screen)
 }
 
 void drawCentreString(const char* text, int x, int y)

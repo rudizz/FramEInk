@@ -3,7 +3,6 @@
 // 
 
 #include "SDPhoto.h"
-#include <SdFat.h>
 
 SDPhotoClass::SDPhotoClass()
 {
