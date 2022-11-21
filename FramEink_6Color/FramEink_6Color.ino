@@ -240,6 +240,7 @@ void setup()
     display.setRotation(ROTATION);
     display.setTextWrap(false);
 
+    settingsOK = true; // debug
     if (!settingsOK)
     {
         wiFiAPSettings = new WiFiAPSettingsClass();
@@ -387,7 +388,7 @@ void drawBattery()
 void drawGrid()
 {
     // upper left and low right coordinates
-    int x1 = marginLeft + thickLineGrid, y1 = headerCalendarName + marginUp;
+    int x1 = marginLeft, y1 = headerCalendarName + marginUp;
     int x2 = WIDTH - marginRight, y2 = HEIGHT - HEIGHT_PHOTO - marginDown;
 
     // Columns and rows
@@ -418,7 +419,6 @@ void drawGrid()
         // Righe verticali
         display.drawThickLine((int)((float)x1 + (float)i * (float)(x2 - x1) / (float)m), y1,
             (int)((float)x1 + (float)i * (float)(x2 - x1) / (float)m), y2, colorGrid, thickLineGrid);
-
     }
     // Stampo la scritta dei giorni del calendario
     display.setFont(&FreeSansBold12pt7b);
@@ -533,10 +533,12 @@ void getToFrom(char* dst, char* from, char* to, int* day, int* timeStamp, bool c
 bool drawEvent(entry* event, int day, int beginY, int maxHeigth, int* heigthNeeded)
 {
     // Upper left coordinates
-    int padLeftRight = 6;
-    int x1 = marginLeft + cellWidth * (day % COLUMNS) + padLeftRight;
-    int y1 = beginY + 3;
-    int xStartTitle = x1 + 5;
+    int padLeftRight = 6; // margin from grid to event box
+    int xLeftBox = marginLeft + cellWidth * (day % COLUMNS) + padLeftRight;
+    int xRightBox = xLeftBox + cellWidth - 2 * padLeftRight;
+    int yUpBox = beginY + 3;
+    int marginTextEvent = 5;
+    int xStartTitle = xLeftBox + marginTextEvent;
 
     // Setting text font
     display.setFont(&FreeSansBold12pt7b);
@@ -566,7 +568,7 @@ bool drawEvent(entry* event, int day, int beginY, int maxHeigth, int* heigthNeed
         display.getTextBounds(line, 0, 0, &xt1, &yt1, &w, &h);
 
         // Char out of bounds, put in next line
-        if (w > cellWidth - 2 * padLeftRight - 30) // cambiare l'ultimo numero che definisce quando andare a capo
+        if (w > xRightBox - xLeftBox - 2 * marginTextEvent)
         {
             // if there was a space 5 chars before, break line there
             if (n - lastSpace < 5)
@@ -586,8 +588,12 @@ bool drawEvent(entry* event, int day, int beginY, int maxHeigth, int* heigthNeed
     }
 
     // display last line of text
-    display.setCursor(xStartTitle, display.getCursorY());
-    display.println(line);
+    // Può capitare che vado a capo e la prima riga è il terminatore, in quel caso non stampo niente.
+    if (line[0] != 0)
+    {
+        display.setCursor(xStartTitle, display.getCursorY()-5);
+        display.println(line);
+    }
 
     // Print time
     // Set cursor on same x but change y
@@ -616,7 +622,7 @@ bool drawEvent(entry* event, int day, int beginY, int maxHeigth, int* heigthNeed
             // Gets text bounds
             display.getTextBounds(line, 0, 0, &xt1, &yt1, &w, &h);
 
-            if (w > (WIDTH / COLUMNS) - 2 * padLeftRight)
+            if (w > xRightBox - xLeftBox - 2 * marginTextEvent)
             {
                 for (int j = i - 1; j > max(-1, i - 4); --j)
                     line[j] = '.';
@@ -632,22 +638,21 @@ bool drawEvent(entry* event, int day, int beginY, int maxHeigth, int* heigthNeed
         display.print(event->time);
     }
 
-    int bx1 = x1;
-    int by1 = y1;
-    int bx2 = x1 + cellWidth - 2 * padLeftRight;
-    int by2 = display.getCursorY() + 7;
+    int yDownBox = display.getCursorY() + 7;
 
     // Draw event rect bounds
-    display.drawThickLine(bx1, by1, bx1, by2, 3, thickLineGrid);
-    display.drawThickLine(bx1, by2, bx2, by2, 3, thickLineGrid);
-    display.drawThickLine(bx2, by2, bx2, by1, 3, thickLineGrid);
-    display.drawThickLine(bx2, by1, bx1, by1, 3, thickLineGrid);
+    display.drawThickLine(xLeftBox, yUpBox, xLeftBox, yDownBox, 3, thickLineGrid);
+    display.drawThickLine(xLeftBox, yDownBox, xRightBox, yDownBox, 3, thickLineGrid);
+    display.drawThickLine(xRightBox, yDownBox, xRightBox, yUpBox, 3, thickLineGrid);
+    display.drawThickLine(xRightBox, yUpBox, xLeftBox, yUpBox, 3, thickLineGrid);
 
     // Set how high is the event
-    *heigthNeeded = display.getCursorY() + 12 - y1;
+    *heigthNeeded = display.getCursorY() + 12 - yUpBox;
 
     // Return is it overflowing
     return display.getCursorY() < maxHeigth - 100; // ipotizzo che il prossimo evento sia alto 100 pixel
+    // se rimangono più di 100 pixel, il prossimo evento viene mostrato, se è più alto di 100 px vengono mostrati
+    // solo i primi 100 px (3 righe)
 }
 
 // Struct event comparison function, by timestamp, used for qsort later on
@@ -782,8 +787,7 @@ void drawCalendarData()
 
     // Sort entries by time
     qsort(entries, entriesNum, sizeof(entry), cmp);
-    Serial.print("Eventi nel calendario: ");
-    Serial.println(entriesNum);
+    Serial.printf("Eventi nel calendario: %d\n", entriesNum);
 
     // Events displayed and overflown counters
     int columns[COLUMNS * ROWS] = { 0 };
@@ -803,11 +807,11 @@ void drawCalendarData()
         // We store how much height did one event take up
         int shift = 0;
         int padDown = 5;
-        int padUp = 9;
+        int padUp = 10;
         bool s = drawEvent(&entries[i], entries[i].day, columns[entries[i].day] + (entries[i].day / COLUMNS) * cellHeight + marginUp + headerCalendarName + headerDay + headerWeather + padUp,
             (entries[i].day / COLUMNS) * cellHeight + marginUp + headerCalendarName + cellHeight, &shift);
 
-        Serial.println(shift);
+        Serial.printf("Shift height event: %d\n", shift);
         columns[entries[i].day] += shift + padDown;
 
         // If it overflowed, set column to clogged and add one event as not shown
@@ -825,9 +829,11 @@ void drawCalendarData()
         if (clogged[i] && cloggedCount[i] > 0)
         {
             // Draw notification showing that there are more events than drawn ones
-            int xBegin = marginLeft + cellWidth * (i % COLUMNS) + thickLineGrid;
+            int marginMoreEvent = 6;
+            int xBegin = marginLeft + cellWidth * (i % COLUMNS) + marginMoreEvent;
             int yBegin = marginUp + headerCalendarName + (i / COLUMNS) * cellHeight + cellHeight - 23;
-            display.fillRoundRect(5 + xBegin, yBegin, cellWidth - 10, 20, 10, INKPLATE_YELLOW);
+            display.fillRoundRect(xBegin, yBegin, cellWidth - 2 * marginMoreEvent, 20, 10, INKPLATE_YELLOW);
+            display.drawRoundRect(xBegin, yBegin, cellWidth - 2 * marginMoreEvent, 20, 10, INKPLATE_ORANGE);
             display.setCursor(15 + xBegin, yBegin + 15);
             //            display.setTextColor(7, 0);
             display.setTextColor(INKPLATE_BLACK, INKPLATE_WHITE);
@@ -869,7 +875,6 @@ void drawWeatherLabel(int x, int y, int day)
         // Draw weather state
     display.setTextColor(colorWeatherName, INKPLATE_WHITE);
     display.setFont(&FreeSans16pt7b);
-    display.setTextSize(1);
     display.setCursor(x, y);
     display.println(nameWeather[day]);
 
@@ -918,7 +923,7 @@ void drawWeatherStrip()
         int xBegin = marginLeft + cellWidth * (day % COLUMNS) + padLeft;
         int yBegin = marginUp + headerCalendarName + headerDay + (day / COLUMNS) * cellHeight + padUp;
         drawWeatherIcon(xBegin, yBegin + 3, day);
-        drawWeatherLabel(xBegin, yBegin + headerWeather - 7, day);
+        drawWeatherLabel(xBegin, yBegin + headerWeather - 5, day);
         drawWeatherTemp(xBegin + icon_height + 20, yBegin + 36, day);
         // If the weather icon is with rain, print the rain probability
         if (strcmp(abbr_days[day], "09d") == 0 ||
@@ -926,7 +931,7 @@ void drawWeatherStrip()
             strcmp(abbr_days[day], "11d") == 0 ||
             strcmp(abbr_days[day], "13d") == 0) // Snow
         {
-            drawWeatherPredictability(xBegin + icon_height + 41, yBegin + headerWeather - 18, day);
+            drawWeatherPredictability(xBegin + icon_height + 41, yBegin + headerWeather - 16, day);
         }
         else
         {
@@ -940,7 +945,7 @@ void drawWeatherStrip()
                                INKPLATE_WHITE, INKPLATE_BLACK);
         }
 
-        // Riga orizzontale in basso. Delimita tempo da eventi calendario
+        // Riga orizzontale in basso. Delimita meteo da eventi calendario
         display.drawThickLine(xBegin - padLeft + thickLineGrid, yBegin + headerWeather + padDown, xBegin - padLeft + cellWidth, yBegin + headerWeather + padDown, colorGrid, thickLineGrid);
     }
 }

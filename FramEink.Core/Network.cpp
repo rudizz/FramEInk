@@ -168,8 +168,7 @@ bool Network::getDataCalendar(char *data)
                 conta++;
             }
         } 
-        Serial.print("Calendar downloaded in [ms]: ");
-        Serial.println(millis() - timeCal);
+        Serial.printf("Calendar downloaded in [ms]: %d\n", millis() - timeCal);
 
         data[n++] = 0;
     }
