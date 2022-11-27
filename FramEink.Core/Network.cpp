@@ -31,7 +31,7 @@ void Network::begin()
 {
     // Initiating wifi, like in BasicHttpClient example
     WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid, pass);
+    WiFi.begin(ssid.c_str(), pass.c_str());
 
     int cnt = 0;
     Serial.print(F("Waiting for WiFi to connect..."));
@@ -192,6 +192,7 @@ bool Network::getDataCalendar(char *data)
 void formatTemp(char *str, float temp)
 {
     // Built in function for float to char* conversion
+    temp = roundf(temp);
     dtostrf(temp, 2, 0, str);
 }
 

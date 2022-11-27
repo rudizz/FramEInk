@@ -49,11 +49,12 @@
 #include "WiFiAccessPoint/WiFiAPSettings.h"
 //#include "WiFiAccessPoint/HTMLSettingsPage.h"
 
-// CHANGE HERE ---------------
-char ssid[] = "Baghini";
-char pass[] = "lastanzadeibottoni";
+// WiFi Credentials ---------------
+RTC_DATA_ATTR String ssid;
+RTC_DATA_ATTR String pass;
 // CALENDAR -----------------
-char calendarURL[] = "https://calendar.google.com/calendar/ical/e9jkn0qjeetjm2mkkvhubtlvrk%40group.calendar.google.com/private-7a399955cd5efd535cac7599422df2b0/basic.ics";
+RTC_DATA_ATTR String calendarURL;
+//String calendarURL = "https://calendar.google.com/calendar/ical/e9jkn0qjeetjm2mkkvhubtlvrk%40group.calendar.google.com/private-7a399955cd5efd535cac7599422df2b0/basic.ics";
 int timeZone = 0;
 
 // Set to 3 to flip the screen 180 degrees
@@ -240,24 +241,39 @@ void setup()
     display.setRotation(ROTATION);
     display.setTextWrap(false);
 
-    settingsOK = true; // debug
+    //settingsOK = true; // debug
     if (!settingsOK)
     {
         wiFiAPSettings = new WiFiAPSettingsClass();
-        wiFiAPSettings->init();
+        wiFiAPSettings->initAP();
         drawSettings();
         wiFiAPSettings->loop(); // esco dopo 5 minuti
+        ssid = wiFiAPSettings->SSID_User;
+        pass = wiFiAPSettings->PWD_User;
+        network.latitude = atoff(wiFiAPSettings->Latitude_User.c_str());
+        network.longitude = atoff(wiFiAPSettings->Longitude_User.c_str());
+        calendarURL = wiFiAPSettings->ICALID_User;
         settingsOK = true;
     }
-
     display.setTextColor(0, 7);
 
     sdPhoto = new SDPhotoClass(&display);
 
+    if (ssid == "" || pass == "")
+    {
+        // Se non sono state impostate le credenziali del WiFi,
+        // non faccio comparire la pagina con Meteo e Calendario
+        stateCalendar = false;
+    }
+    else if (!sdPhoto->initOk)
+    {
+        stateCalendar = true;
+    }
+
     if (!stateCalendar)
     {
         // Photo
-        counterLandscape = -1;
+        counterLandscape = -1; // attivo il random mode
         display.clearDisplay();
         sdPhoto->drawImageFromSD(0, 0, SDPhotoClass::PhotoOrientation::landscape, counterLandscape);
     }
@@ -1006,7 +1022,7 @@ void drawSettings()
     display.setCursor(15, 60); // Print out instruction on how to connect to Inkplate WiFi and how to open a web page
     display.print("1. Connect to ");
     display.setTextColor(INKPLATE_RED);
-    display.print(wiFiAPSettings->SSID_Settings);
+    display.print(wiFiAPSettings->SSID_AP_Settings);
     display.setTextColor(INKPLATE_BLACK);
     display.println(" WiFi");
 
@@ -1036,7 +1052,7 @@ void drawSettings()
     drawCentreString("This page will remain", WIDTH / 2, 320);
     display.println("");
     //fprintf("active for %s minutes", wiFiAPSettings->settingDuration);
-    drawCentreString("active for %s minutes", WIDTH / 2, display.getCursorY());
+    drawCentreString((String("active for ") + String(wiFiAPSettings->settingDuration) + String (" minutes")).c_str(), WIDTH / 2, display.getCursorY());
     
     // Draw rounded orange rect
     uint8_t thick = 5;

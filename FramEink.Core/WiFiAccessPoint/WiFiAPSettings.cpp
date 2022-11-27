@@ -18,25 +18,27 @@ String User_ICALID;
 
 WiFiAPSettingsClass::WiFiAPSettingsClass()
 {
-}
-//WiFiAPSettingsClass::WiFiAPSettingsClass(Inkplate* _display)
-//{
-//    display = _display;
-//}
-
-void WiFiAPSettingsClass::init()
-{
     // Init EEPROM library with 512 of EEPROM size. Do not change this value, it can wipe waveform data!
     EEPROM.begin(512);
     Serial.println("begin...");
 
-
+    // Leggo i parametri dalla eeprom
     readEEPROM();
-    Serial.println("readEEPROM...");
+    Serial.println("readed EEPROM...");
+}
+
+void WiFiAPSettingsClass::initAP()
+{
+    // Carico i parametri nella pagina HTML che viene visualizzata all'utente
+    insertParamInHTMLPage(String("'SSID'>"), String(User_SSID));
+    insertParamInHTMLPage(String("'password'>"), String(User_PWD));
+    insertParamInHTMLPage(String("'latitude'>"), String(User_Latitude));
+    insertParamInHTMLPage(String("'longitude'>"), String(User_Longitude));
+    insertParamInHTMLPage(String("'icalID'>"), String(User_ICALID));
 
     WiFi.begin();            // Init. WiFi library
     WiFi.mode(WIFI_AP);      // Set WiFi to Access point mode
-    WiFi.softAP(SSID_Settings); // Set SSID (WiFi name) and password for Access point
+    WiFi.softAP(SSID_AP_Settings); // Set SSID (WiFi name) and password for Access point
 
     serverIP = WiFi.softAPIP(); // Get the server IP address
 
@@ -46,6 +48,12 @@ void WiFiAPSettingsClass::init()
     // the end of address. That means that web address has some arguments (our text!).
     server.begin();          // Start the web server
 }
+
+void WiFiAPSettingsClass::insertParamInHTMLPage(String paramText, String paramValue)
+{
+    strHTML.replace(paramText, paramText + paramValue);
+}
+
 
 void WiFiAPSettingsClass::loop()
 {
@@ -60,6 +68,7 @@ void WiFiAPSettingsClass::loop()
     Latitude_User = User_Latitude;
     Longitude_User = User_Longitude;
     ICALID_User = User_ICALID;
+    // TODO: aggiornare la pagina strOKHTML per confermare la ricezione dei parametri
 }
 
 void WiFiAPSettingsClass::updateHTML()
@@ -81,6 +90,9 @@ void WiFiAPSettingsClass::handleString()
     User_Latitude = server.arg(2);
     User_Longitude = server.arg(3);
     User_ICALID = server.arg(4);
+
+    User_Latitude.replace(',', '.');
+    User_Longitude.replace(',', '.');
     //updateHTML();
     writeEEPROM();
     settingsDone = true;

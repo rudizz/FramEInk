@@ -24,10 +24,10 @@ Distributed as-is; no warranty is given.
 extern int timeZone;
 
 // Wifi ssid and password
-extern char ssid[];
-extern char pass[];
+extern String ssid;
+extern String pass;
 
-extern char calendarURL[];
+extern String calendarURL;
 
 #ifndef NETWORK_H
 #define NETWORK_H
@@ -54,8 +54,8 @@ class Network
     // Used to store loaction woeid (world id), set in findCity()
     // Munich
     const int location = 676757; // Woeid Munich: 676757
-    const float latitude = 48.150914;
-    const float longitude = 11.567003;
+    float latitude; // = 48.150914;
+    float longitude; // = 11.567003;
     
   private:
     // Functions called from within our class

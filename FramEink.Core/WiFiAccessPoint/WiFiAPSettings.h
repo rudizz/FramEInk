@@ -13,7 +13,7 @@
 
 #include "EEPROM.h"   // Include ESP32 EEPROM library
 
-#define EEPROM_START_ADDR 76  // Start EEPROM address for user data. Addresses below address 76 are waveform data!
+#define EEPROM_START_ADDR 0  // Start EEPROM address for user data. Addresses below address 76 are waveform data!
 #define EEPROM_SIZE       512 // How much data to write to EEPROM in this example
 
 class WiFiAPSettingsClass
@@ -26,15 +26,16 @@ class WiFiAPSettingsClass
 	 static void readEEPROM();
 	 static int writeStringToEEPROM(int addrOffset, const String& strToWrite);
 	 static int readStringFromEEPROM(int addrOffset, String* strToRead);
+	 void insertParamInHTMLPage(String paramText, String paramValue);
 
  public:
 	 WiFiAPSettingsClass();
-	 void init();
+	 void initAP();
 	 void loop();
 	  //Inkplate* display;
-	 const char* SSID_Settings = "FramEInk";
+	 const char* SSID_AP_Settings = "FramEInk";
 	 IPAddress serverIP;
-	 const uint16_t settingDuration = 5; // [min]
+	 const uint16_t settingDuration = 10; // [min]
 	 String SSID_User;
 	 String PWD_User;
 	 String Latitude_User;
