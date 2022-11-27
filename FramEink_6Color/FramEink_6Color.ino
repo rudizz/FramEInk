@@ -537,8 +537,9 @@ bool drawEvent(entry* event, int day, int beginY, int maxHeigth, int* heigthNeed
     int xLeftBox = marginLeft + cellWidth * (day % COLUMNS) + padLeftRight;
     int xRightBox = xLeftBox + cellWidth - 2 * padLeftRight;
     int yUpBox = beginY + 3;
-    int marginTextEvent = 5;
+    int marginTextEvent = 5; // margine dx e sx del titolo dell'evento
     int xStartTitle = xLeftBox + marginTextEvent;
+    int interlinea = -5; // nel titolo dell'evento indica la distanza tra una riga e la successiva
 
     // Setting text font
     display.setFont(&FreeSansBold12pt7b);
@@ -555,6 +556,10 @@ bool drawEvent(entry* event, int day, int beginY, int maxHeigth, int* heigthNeed
     display.setCursor(xStartTitle, beginY + 33); // offset tra la linea alta della griglia e l'inizio del testo
     for (int i = 0; i < min(MAX_N_CHAR_TITLE_CALENDAR, (int)strlen(event->name)); ++i)
     {
+        // Se il primo carattere è uno spazio, lo salto
+        if (n == 0 && event->name[i] == ' ')
+            i++;
+
         // Copy name letter by letter and check if it overflows space given
         line[n] = event->name[i];
         if (line[n] == ' ')
@@ -567,9 +572,14 @@ bool drawEvent(entry* event, int day, int beginY, int maxHeigth, int* heigthNeed
         // Gets text bounds
         display.getTextBounds(line, 0, 0, &xt1, &yt1, &w, &h);
 
+        // Scrivo linea per linea in modo che posso usare l'interlinea
         // Char out of bounds, put in next line
         if (w > xRightBox - xLeftBox - 2 * marginTextEvent)
         {
+            // Ho superato la dimensione massima, quindi torno indietro di un carattere e stampo la stringa
+            i--;
+            line[--n] = 0;
+
             // if there was a space 5 chars before, break line there
             if (n - lastSpace < 5)
             {
@@ -578,7 +588,7 @@ bool drawEvent(entry* event, int day, int beginY, int maxHeigth, int* heigthNeed
             }
 
             // Print text line
-            display.setCursor(xStartTitle, display.getCursorY()-5);
+            display.setCursor(xStartTitle, display.getCursorY() + interlinea);
             display.println(line);
 
             // Clears line (null termination on first charachter)
@@ -591,7 +601,7 @@ bool drawEvent(entry* event, int day, int beginY, int maxHeigth, int* heigthNeed
     // Può capitare che vado a capo e la prima riga è il terminatore, in quel caso non stampo niente.
     if (line[0] != 0)
     {
-        display.setCursor(xStartTitle, display.getCursorY()-5);
+        display.setCursor(xStartTitle, display.getCursorY() + interlinea);
         display.println(line);
     }
 
@@ -760,6 +770,9 @@ void drawCalendarData()
             if (lengthSummary > MAX_N_CHAR_TITLE_CALENDAR)
                 lengthSummary = MAX_N_CHAR_TITLE_CALENDAR;
             strncpy(entries[entriesNum].name, summary, lengthSummary);
+            correggiApostrofo(entries[entriesNum].name, lengthSummary);
+            correggiCarriageReturn(entries[entriesNum].name, lengthSummary);
+
             if (lengthSummary == MAX_N_CHAR_TITLE_CALENDAR)
             {
                 entries[entriesNum].name[lengthSummary-2] = '.';
@@ -773,6 +786,15 @@ void drawCalendarData()
         {
             strncpy(entries[entriesNum].location, location, strchr(location, '\n') - location);
             entries[entriesNum].location[strchr(location, '\n') - location] = 0;
+            correggiApostrofo(entries[entriesNum].location, strchr(location, '\n') - location);
+            correggiCarriageReturn(entries[entriesNum].location, strchr(location, '\n') - location);
+
+            //for (size_t g = 0; g < strchr(location, '\n') - location; g++)
+            //{
+            //    Serial.print(entries[entriesNum].location[g]);
+            //    Serial.println((int)entries[entriesNum].location[g]);
+
+            //}
         }
 
         //Serial.print("DEBUG DTSTART ");
@@ -811,7 +833,7 @@ void drawCalendarData()
         bool s = drawEvent(&entries[i], entries[i].day, columns[entries[i].day] + (entries[i].day / COLUMNS) * cellHeight + marginUp + headerCalendarName + headerDay + headerWeather + padUp,
             (entries[i].day / COLUMNS) * cellHeight + marginUp + headerCalendarName + cellHeight, &shift);
 
-        Serial.printf("Shift height event: %d\n", shift);
+        //Serial.printf("Shift height event: %d\n", shift);
         columns[entries[i].day] += shift + padDown;
 
         // If it overflowed, set column to clogged and add one event as not shown
@@ -845,6 +867,31 @@ void drawCalendarData()
             {
                 display.print("s");
             }
+        }
+    }
+}
+
+// L'apostrofo viene visto erroneamente come carattere 226,
+// quindi lo cerco e sostituisco con il carattere presente nei Font a 7 bit.
+void correggiApostrofo(char* text, size_t lengthText)
+{
+    for (size_t i = 0; i < lengthText; i++)
+    {
+        if ((int)text[i] == 226) {
+            text[i] = '\'';
+        }
+    }
+}
+
+// Il carriage return viene visto erroneamente come insieme di caratteri \n,
+// quindi lo cerco e sostituisco con due spazi.
+void correggiCarriageReturn(char* text, size_t lengthText)
+{
+    for (size_t i = 0; i < lengthText-1; i++)
+    {
+        if (text[i] == '\\' && text[i+1] == 'n') {
+            text[i++] = ' ';
+            text[i] = ' ';
         }
     }
 }

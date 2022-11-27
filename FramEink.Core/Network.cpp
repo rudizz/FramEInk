@@ -161,6 +161,8 @@ bool Network::getDataCalendar(char *data)
         while (n + 4 < 1000000L && http.getStream().available()) {
             data[n++] = http.getStream().read();
             conta = 0;
+            //if (n < 1000) // print calendar data
+            //    Serial.print(data[n-1]);
             while (!http.getStream().available() && conta < 10) // aggiungo questo controllo altrimenti esce prima di aver scaricato tutto
             {
                 delay(10);
