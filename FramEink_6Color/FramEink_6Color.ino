@@ -50,10 +50,10 @@
 //#include "WiFiAccessPoint/HTMLSettingsPage.h"
 
 // WiFi Credentials ---------------
-RTC_DATA_ATTR String ssid;
-RTC_DATA_ATTR String pass;
+String ssid;
+String pass;
 // CALENDAR -----------------
-RTC_DATA_ATTR String calendarURL;
+String calendarURL;
 //String calendarURL = "https://calendar.google.com/calendar/ical/e9jkn0qjeetjm2mkkvhubtlvrk%40group.calendar.google.com/private-7a399955cd5efd535cac7599422df2b0/basic.ics";
 int timeZone = 0;
 
@@ -168,7 +168,7 @@ RTC_DATA_ATTR char nameWeather[6][32] = {
 // Go to sleep before checking again
 const long long time_sleeping = 60ll; // [minutes] 180' = 3h sleep
 // Delay between API calls. Converts time_sleeping in minutes.
-#define DELAY_MIN 60000000ll
+#define MIN_2_MICROSEC 60000000ll
 
 // Initiate out Inkplate object
 Inkplate display;
@@ -218,7 +218,6 @@ void setup()
 {
     Serial.begin(115200);
     Serial.println("Inizializzo...");
-    delay(2000); // TODO remove
 
     // calcolo le variabili iniziali in base all'orientamento
     if (ROTATION == 0 | ROTATION == 2)
@@ -242,34 +241,48 @@ void setup()
     display.setTextWrap(false);
 
     //settingsOK = true; // debug
+    wiFiAPSettings = new WiFiAPSettingsClass();
     if (!settingsOK)
     {
-        wiFiAPSettings = new WiFiAPSettingsClass();
         wiFiAPSettings->initAP();
         drawSettings();
-        wiFiAPSettings->loop(); // esco dopo 5 minuti
-        ssid = wiFiAPSettings->SSID_User;
-        pass = wiFiAPSettings->PWD_User;
-        network.latitude = atoff(wiFiAPSettings->Latitude_User.c_str());
-        network.longitude = atoff(wiFiAPSettings->Longitude_User.c_str());
-        calendarURL = wiFiAPSettings->ICALID_User;
+        wiFiAPSettings->loop(); // esco dopo 10 minuti
         settingsOK = true;
     }
+    ssid = wiFiAPSettings->SSID_User;
+    pass = wiFiAPSettings->PWD_User;
+    network.latitude = atoff(wiFiAPSettings->Latitude_User.c_str());
+    network.longitude = atoff(wiFiAPSettings->Longitude_User.c_str());
+    calendarURL = wiFiAPSettings->ICALID_User;
+
     display.setTextColor(0, 7);
 
     sdPhoto = new SDPhotoClass(&display);
 
-    if (ssid == "" || pass == "")
-    {
-        // Se non sono state impostate le credenziali del WiFi,
-        // non faccio comparire la pagina con Meteo e Calendario
-        stateCalendar = false;
-    }
-    else if (!sdPhoto->initOk)
-    {
-        stateCalendar = true;
-    }
+    Serial.print("ssid: ");
+    Serial.println(ssid);
+    Serial.print("pass: ");
+    Serial.println(pass);
+    Serial.print("calendarURL: ");
+    Serial.println(calendarURL);
+    Serial.printf("sd init: %d\n", sdPhoto->initOk);
+    Serial.printf("display sd init: %d\n", display.sdCardInit());
 
+    //if (ssid == "" || pass == "")
+    //{
+    //    // Se non sono state impostate le credenziali del WiFi,
+    //    // non faccio comparire la pagina con Meteo e Calendario
+    //    stateCalendar = false;
+    //}
+    //else if (!sdPhoto->initOk)
+    //{
+    //    stateCalendar = true;
+    //}
+    
+    //ssid = "Baghini";
+    //pass = "lastanzadeibottoni";
+    //calendarURL = "https://calendar.google.com/calendar/ical/e9jkn0qjeetjm2mkkvhubtlvrk%40group.calendar.google.com/private-7a399955cd5efd535cac7599422df2b0/basic.ics";
+    
     if (!stateCalendar)
     {
         // Photo
@@ -290,14 +303,15 @@ void setup()
             &moon_phase[0], &moon_phase[1], &moon_phase[2], &moon_phase[3], &moon_phase[4], &moon_phase[5]);
 
         // ---  CALENDAR  ---
-        data = (char*)ps_malloc(1000000L); // alloco 1Mb su RAM extra del ESP32
-        // Keep trying to get data if it fails the first time
-        while (!network.getDataCalendar(data))
-        {
-            Serial.println("Failed getting data, retrying");
-            delay(1000);
+        if (calendarURL != "") {
+            data = (char*)ps_malloc(1000000L); // alloco 1Mb su RAM extra del ESP32
+            // Keep trying to get data if it fails the first time
+            while (!network.getDataCalendar(data))
+            {
+                Serial.println("Failed getting data, retrying");
+                delay(1000);
+            }
         }
-
         //Serial.println(data); // stampo i dati grezzi del calendario
         // Drawing all data, functions for that are above
         display.clearDisplay();
@@ -305,7 +319,8 @@ void setup()
         //drawInfo();
         //drawBattery();
         drawGrid();
-        drawCalendarData();
+        if (calendarURL != "")
+            drawCalendarData();
         //drawTime();
 
         drawWeatherStrip();
@@ -318,18 +333,18 @@ void setup()
     // Can't do partial due to deepsleep
     display.display();
 
-    Serial.printf("counterPortrait: %d\n", counterPortrait);
+    Serial.printf("counterPortrait: %d, counterLandscape: %d\n", counterPortrait, counterLandscape);
 
     // Se si sveglia tra le 23:00 e l' 1:59, imposto a 6 ore il tempo di sleep
-    int timeHour;
-    network.getTimeHour(&timeHour, 0);
-    if (timeHour >= 23 || timeHour < 2)
-    {
-        //time_sleeping = 360ll; // 6h sleep
-    }
+    //int timeHour;
+    //network.getTimeHour(&timeHour, 0);
+    //if (timeHour >= 23 || timeHour < 2)
+    //{
+    //    //time_sleeping = 360ll; // 6h sleep
+    //}
     Serial.print("Sleep time [us]: ");
-    Serial.println(time_sleeping * DELAY_MIN);
-    esp_sleep_enable_timer_wakeup(time_sleeping * DELAY_MIN);
+    Serial.println(time_sleeping * MIN_2_MICROSEC);
+    esp_sleep_enable_timer_wakeup(time_sleeping * MIN_2_MICROSEC);
     (void)esp_deep_sleep_start();
 }
 
@@ -945,22 +960,38 @@ void drawWeatherLabel(int x, int y, int day)
 // TEMPERATURE
 void drawWeatherTemp(int x, int y, int day)
 {
+    int xTermometro = x + 41;
+    int xTempMax = x;
+    int xTempMin = x;
+     // Check temp max width
+    int16_t x1, y1;
+    uint16_t w, h;
+    display.getTextBounds(temps_max[day], 0, 0, &x1, &y1, &w, &h);
+    Serial.printf("xTempMax: %d, w: %d\n", xTempMax, w);
+    if (xTempMax + w > xTermometro)
+        xTempMax = xTermometro - w;
+    // Check temp min width
+    display.getTextBounds(temps_min[day], 0, 0, &x1, &y1, &w, &h);
+    Serial.printf("xTempMax: %d, w: %d\n", xTempMin, w);
+    if (xTempMin + w > xTermometro)
+        xTempMin = xTermometro - w;
+
     // Temp Max
     display.setFont(&FreeSansSerifBold14pt7b);
     display.setTextColor(colorWeatherTempMax);
-    display.setCursor(x, y);
+    display.setCursor(xTempMax, y);
     display.print(temps_max[day]);
     /*display.setFont(&FreeSans9pt7b);
     display.println("° C");*/
     // Temp Min
     display.setFont(&FreeSansSerifBold14pt7b);
     display.setTextColor(colorWeatherTempMin);
-    display.setCursor(x, y + 30);
+    display.setCursor(xTempMin, y + 30);
     display.print(temps_min[day]);
     /*display.setFont(&FreeSans9pt7b);
     display.println(F("° C"));*/
 
-    display.drawBitmap3Bit(x + 41, y - 28, termometro, termometro_w, termometro_h);
+    display.drawBitmap3Bit(xTermometro, y - 28, termometro, termometro_w, termometro_h);
 }
 // PREDICTABILITY
 void drawWeatherPredictability(int x, int y, int day)
@@ -1040,9 +1071,10 @@ void drawSettings()
 
     display.setTextColor(INKPLATE_BLACK);
     display.setCursor(15, 220);
-    display.println("3. Fill the information and press");
-    display.setTextColor(INKPLATE_ORANGE);
+    display.println("3. Fill in the information and");
     display.setCursor(display.getCursorX() + 60, display.getCursorY());
+    display.print("press ");
+    display.setTextColor(INKPLATE_ORANGE);
     display.print("Send to FramEInk! ");
 
     //display.fillRect(10, 240, 780, 4, INKPLATE_YELLOW);

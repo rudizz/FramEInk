@@ -148,7 +148,7 @@ RTC_DATA_ATTR char nameWeather[6][32] = {
 // Go to sleep before checking again
 const long long time_sleeping = 60ll; // [minutes] 180' = 3h sleep
 // Delay between API calls. Converts time_sleeping in minutes.
-#define DELAY_MIN 60000000ll
+#define MIN_2_MICROSEC 60000000ll
 
 // Initiate out Inkplate object
 Inkplate display(INKPLATE_3BIT);
@@ -286,8 +286,8 @@ void setup()
         //time_sleeping = 360ll; // 6h sleep
     }
     Serial.print("Sleep time [us]: ");
-    Serial.println(time_sleeping * DELAY_MIN);
-    esp_sleep_enable_timer_wakeup(time_sleeping * DELAY_MIN);
+    Serial.println(time_sleeping * MIN_2_MICROSEC);
+    esp_sleep_enable_timer_wakeup(time_sleeping * MIN_2_MICROSEC);
     (void)esp_deep_sleep_start();
 }
 

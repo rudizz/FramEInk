@@ -42,7 +42,7 @@ static String strHTML = "<head>"
 "<t1>Weather Forecast Longitude: (e.g. 15.383940)</t1><br>"
 "<textarea autofocus maxlength = '10' rows = '1' cols = '40' name = 'longitude'></textarea><br><br><br><br>"
 "<t1>Calendar id key: (e.g. https://calendar.google.com/calendar/ical/e9jkn.../basic.ics)</t1><br>"
-"<textarea autofocus maxlength = '200' rows = '5' cols = '40' name = 'icalID'></textarea><br><br><br><br><br>"
+"<textarea autofocus maxlength = '200' height = '5' rows = '5' cols = '40' name = 'icalID'></textarea><br><br><br><br><br>"
 
 "<input type='submit' value='Send to FramEInk!'></form></body></html>";
 

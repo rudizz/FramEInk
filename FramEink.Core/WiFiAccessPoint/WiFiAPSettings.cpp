@@ -24,6 +24,12 @@ WiFiAPSettingsClass::WiFiAPSettingsClass()
 
     // Leggo i parametri dalla eeprom
     readEEPROM();
+    // Copy the settings parameters to public variables
+    SSID_User = User_SSID;
+    PWD_User = User_PWD;
+    Latitude_User = User_Latitude;
+    Longitude_User = User_Longitude;
+    ICALID_User = User_ICALID;
     Serial.println("readed EEPROM...");
 }
 
