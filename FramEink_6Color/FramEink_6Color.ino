@@ -198,7 +198,7 @@ struct entry
 
 // Here we store calendar entries
 int entriesNum = 0;
-const int MAX_CALENDAR_EVENTS = 128;
+const int MAX_CALENDAR_EVENTS = 50;
 entry entries[MAX_CALENDAR_EVENTS];
 
 // All our functions declared below setup and loop
@@ -206,7 +206,7 @@ void drawInfo();
 void drawTime();
 void drawBattery();
 void drawGrid();
-void getToFrom(char* dst, char* from, char* to, int* day, int* timeStamp, bool correctTimeZone);
+//bool getToFrom(char* dst, char* from, char* to, int* day, int* timeStamp, bool correctTimeZone);
 bool drawEvent(entry* event, int day, int beginY, int maxHeigth, int* heigthNeeded);
 int cmp(const void* a, const void* b);
 void drawCalendarData();
@@ -240,7 +240,8 @@ void setup()
     display.setRotation(ROTATION);
     display.setTextWrap(false);
 
-    //settingsOK = true; // debug
+    settingsOK = true; // debug
+    delay(10000); // debug
     wiFiAPSettings = new WiFiAPSettingsClass();
     if (!settingsOK)
     {
@@ -319,6 +320,7 @@ void setup()
         //drawInfo();
         //drawBattery();
         drawGrid();
+
         if (calendarURL != "")
             drawCalendarData();
         //drawTime();
@@ -454,10 +456,10 @@ void drawGrid()
     // Stampo la scritta dei giorni del calendario
     display.setFont(&FreeSansBold12pt7b);
     display.setTextColor(colorDayTitle);
+    char temp[32];
     for (int i = 0; i < m * n; ++i)
     {
         // Display day info using time offset
-        char temp[64];
         network.getTime(temp, i * 3600L * 24);
         temp[10] = 0;
 
@@ -467,97 +469,93 @@ void drawGrid()
 }
 
 // Format event times, example 13:00 to 14:00
-void getToFrom(char* dst, char* from, char* to, int* day, int* timeStamp, bool correctTimeZone)
+// Restituisce True se il giorno deve essere visualizzato.
+bool getToFrom(char* dst, char* from, char* to, int* day, int* timeStamp, bool correctTimeZone)
 {
     // ANSI C time struct
-    struct tm ltm = { 0 }, ltm2 = { 0 };
-    char temp[128], temp2[128];
-    strncpy(temp, from, 16);
-    temp[16] = 0;
+    time_t epochFrom = getEpoch(from);
+    time_t epochTo = getEpoch(to);
 
-    // https://github.com/esp8266/Arduino/issues/5141, quickfix
-    memmove(temp + 5, temp + 4, 16);
-    memmove(temp + 8, temp + 7, 16);
-    memmove(temp + 14, temp + 13, 16);
-    memmove(temp + 16, temp + 15, 16);
-    temp[4] = temp[7] = temp[13] = temp[16] = '-';
-
-    // time.h function
-    strptime(temp, "%Y-%m-%dT%H-%M-%SZ", &ltm);
-
-    // create start and end event structs
-    struct tm event, event2;
-    time_t epoch = mktime(&ltm);
     // In alcuni casi viene passato l'orario già corretto del TimeZone, quindi non devo modificarlo.
     if (correctTimeZone)
     {
-        epoch += (time_t)timeZone;
+        epochFrom += (time_t)timeZone;
+        epochTo += (time_t)timeZone;
     }
+    // Creo la data a partire dall'epoch
+    struct tm eventFrom, eventTo;
+    gmtime_r(&epochFrom, &eventFrom);
+    gmtime_r(&epochTo, &eventTo);
 
-    gmtime_r(&epoch, &event);
-
-    strncpy(temp2, to, 16);
-    temp2[16] = 0;
-
-    // Same as above
-
-    // https://github.com/esp8266/Arduino/issues/5141, quickfix
-    memmove(temp2 + 5, temp2 + 4, 16);
-    memmove(temp2 + 8, temp2 + 7, 16);
-    memmove(temp2 + 14, temp2 + 13, 16);
-    memmove(temp2 + 16, temp2 + 15, 16);
-    temp2[4] = temp2[7] = temp2[13] = temp2[16] = '-';
-
-    strptime(temp2, "%Y-%m-%dT%H-%M-%SZ", &ltm2);
-
-    time_t epoch2 = mktime(&ltm2);
-    if (correctTimeZone)
-    {
-        epoch2 += (time_t)timeZone;
-    }
-
-    gmtime_r(&epoch2, &event2);
-
-    // Se l'evento dura almeno un giorno intero, nella label dell'orario scrivo 'All-day'.
-    if (epoch2 - epoch >= 3600L * 24)
-    {
-        strncpy(dst, "All-day", 7);
-    }
-    else {
-        // Scrivo l'ora di inizio in dst.
-        strncpy(dst, asctime(&event) + 11, 5);
-        dst[5] = ' ';
-        dst[6] = '-';
-        dst[7] = ' ';
-        // Scrivo l'ora di fine in dst
-        strncpy(dst + 8, asctime(&event2) + 11, 5);
-    }
-    dst[13] = 0;
-
+    // Controllo in quale giorno rispetto a oggi, l'evento deve essere posizionato
+    // e copio l'informazione in *day.
+    bool isDayToBeShown = false;
     char days[COLUMNS * ROWS][64];
-
     // Definisco il giorno di inizio evento
     // Find UNIX timestamps for next days to see where to put event
     for (int i = 0; i < COLUMNS * ROWS; i++)
     {
         network.getTime(days[i], i * 24 * 3600);
     }
-
-    *timeStamp = epoch;
-
     // Getting the time from our function in Network.cpp
+    char temp[32];
     network.getTime(temp);
     for (int i = 0; i < COLUMNS * ROWS; i++)
     {
-        if (strncmp(days[i], asctime(&event), 10) == 0)
+        if (strncmp(days[i], asctime(&eventFrom), 10) == 0)
         {
             *day = i;
+            isDayToBeShown = true;
             break;
         }
         else { // event not in next COLUMNS * ROWS days, don't display
             *day = -1;
         }
     }
+    // Se il giorno non deve essere visualizzato, non proseguo oltre.
+    if (!isDayToBeShown)
+        return false;
+
+    // Assegno il valore Timestamp
+    *timeStamp = epochFrom;
+
+    // Se l'evento dura almeno un giorno intero, nella label dell'orario scrivo 'All-day'.
+    if (epochTo - epochFrom >= 3600L * 24)
+    {
+        strncpy(dst, "All-day", 7);
+    }
+    else {
+        // Scrivo l'ora di inizio in dst.
+        strncpy(dst, asctime(&eventFrom) + 11, 5);
+        dst[5] = ' ';
+        dst[6] = '-';
+        dst[7] = ' ';
+        // Scrivo l'ora di fine in dst
+        strncpy(dst + 8, asctime(&eventTo) + 11, 5);
+    }
+    dst[13] = 0;
+    return isDayToBeShown;
+}
+
+time_t getEpoch(char* dateString)
+{
+    struct tm ltm = { 0 };
+    char temp[32];
+
+    strncpy(temp, dateString, 16);
+    temp[16] = 0;
+
+    //// https://github.com/esp8266/Arduino/issues/5141, quickfix
+    //memmove(temp + 5, temp + 4, 16);
+    //memmove(temp + 8, temp + 7, 16);
+    //memmove(temp + 14, temp + 13, 16);
+    //memmove(temp + 16, temp + 15, 16);
+    //temp[4] = temp[7] = temp[13] = temp[16] = '-';
+
+    // time.h function
+    strptime(temp, "%Y-%m-%dT%H-%M-%SZ", &ltm);
+
+    return mktime(&ltm);
 }
 
 // Function to draw event
@@ -714,8 +712,8 @@ bool stringContain(char* str1, char* pattern)
 // Main data drawing data
 void drawCalendarData()
 {
-    long i = 0;
-    long n = strlen(data);
+    char* begin = data + 1;
+    char* nMax = data + strlen(data)-1;
     //Serial.println("Cal0");
     
     //uICAL::istream_String istm(data);
@@ -744,22 +742,22 @@ void drawCalendarData()
     entriesNum = 0;
 
     // Search raw data for events
-    while (entriesNum < MAX_CALENDAR_EVENTS && i < n && strstr(data + i, "BEGIN:VEVENT"))
+    while (entriesNum < MAX_CALENDAR_EVENTS && begin < nMax && strstr(begin, "BEGIN:VEVENT"))
     {
         // Find next event start and end
-        i = strstr(data + i, "BEGIN:VEVENT") - data + 12;
-        char* end = strstr(data + i, "END:VEVENT");
+        begin = strstr(begin, "BEGIN:VEVENT") + 12;
+        char* end = strstr(begin, "END:VEVENT");
 
         if (end == NULL)
             continue;
 
         bool correggiTimeZone = true;
         // Find all relevant event data
-        char* summary = strstr(data + i, "SUMMARY:") + 8;
-        char* location = strstr(data + i, "LOCATION:") + 9;
+        char* summary = strstr(begin, "SUMMARY:") + 8;
+        char* location = strstr(begin, "LOCATION:") + 9;
 
         // Dopo il DTSTART potrebbero esserci dei parametri, quindi li cerco.
-        char* timeStart = strstr(data + i, "DTSTART") + 7;
+        char* timeStart = strstr(begin, "DTSTART") + 7;
 
         // Se esiste il campo TZID devo riportare l'orario senza correggerlo tramite TimeZone.
         // Il parametro ;VALUE=DATE indica che non è presente l'orario perché l'evento occupa tutto il giorno.
@@ -770,7 +768,7 @@ void drawCalendarData()
         timeStart = strstr(timeStart, ":") + 1;
 
 
-        char* timeEnd = strstr(data + i, "DTEND") + 5;
+        char* timeEnd = strstr(begin, "DTEND") + 5;
         timeEnd = strstr(timeEnd, ":") + 1;
 
         // Gestisco gli eventi ripetuti nel tempo
@@ -794,7 +792,20 @@ void drawCalendarData()
 
 //        for (int seq = 0; seq <= atoi(sequence)
 
-        // Se il titolo è troppo lungo, lo tronco e aggiungo ... alla fine
+        // Porto il begin un carattere dopo l'end
+        begin = end + 11;
+
+        // Parso la data dell'evento. Se non rientra nei giorni da visualizzare,
+        // non lo aggiungo a 'entries' e passo all'evento successivo.
+        if (timeStart && timeStart < end && timeEnd < end &&
+            !getToFrom(entries[entriesNum].time, timeStart, timeEnd, &entries[entriesNum].day,
+                &entries[entriesNum].timeStamp, correggiTimeZone))
+        {
+            //Serial.println("Day not to be shown");
+            continue;
+        }
+
+        // Parso il titolo dell'evento
         if (summary && summary < end)
         {
             int lengthSummary = strchr(summary, '\n') - summary;
@@ -804,6 +815,7 @@ void drawCalendarData()
             correggiApostrofo(entries[entriesNum].name, lengthSummary);
             correggiCarriageReturn(entries[entriesNum].name, lengthSummary);
 
+            // Se il titolo è troppo lungo, lo tronco e aggiungo ... alla fine
             if (lengthSummary == MAX_N_CHAR_TITLE_CALENDAR)
             {
                 entries[entriesNum].name[lengthSummary-2] = '.';
@@ -826,14 +838,6 @@ void drawCalendarData()
             //    Serial.println((int)entries[entriesNum].location[g]);
 
             //}
-        }
-
-        //Serial.print("DEBUG DTSTART ");
-        if (timeStart && timeStart < end && timeEnd < end)
-        {
-            //Serial.println(tempDebug);
-            getToFrom(entries[entriesNum].time, timeStart, timeEnd, &entries[entriesNum].day,
-                &entries[entriesNum].timeStamp, correggiTimeZone);
         }
         ++entriesNum;
     }
@@ -967,12 +971,10 @@ void drawWeatherTemp(int x, int y, int day)
     int16_t x1, y1;
     uint16_t w, h;
     display.getTextBounds(temps_max[day], 0, 0, &x1, &y1, &w, &h);
-    Serial.printf("xTempMax: %d, w: %d\n", xTempMax, w);
     if (xTempMax + w > xTermometro)
         xTempMax = xTermometro - w;
     // Check temp min width
     display.getTextBounds(temps_min[day], 0, 0, &x1, &y1, &w, &h);
-    Serial.printf("xTempMax: %d, w: %d\n", xTempMin, w);
     if (xTempMin + w > xTermometro)
         xTempMin = xTermometro - w;
 
