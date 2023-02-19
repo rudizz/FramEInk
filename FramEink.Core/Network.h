@@ -40,6 +40,7 @@ class Network
     // Functions we can access in main file
     void begin();
     void getTime(char *timeStr, long offset = 0);
+    time_t getNowEpoch();
     void getTimeHour(int *timeHour, long offSet);
     bool getDataCalendar(char *data);
     void getDataFromMetaWeather(int * timezone_offset, char *temp_min0, char *temp_min1, char *temp_min2, char *temp_min3, char *temp_min4, char *temp_min5, char *currentTemp,

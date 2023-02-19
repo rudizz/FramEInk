@@ -136,7 +136,7 @@ int WiFiAPSettingsClass::writeStringToEEPROM(int addrOffset, const String& strTo
 int WiFiAPSettingsClass::readStringFromEEPROM(int addrOffset, String* strToRead)
 {
     int newStrLen = EEPROM.read(addrOffset);
-    Serial.printf("Length EEPROM READ: %d\n", newStrLen);
+    //Serial.printf("Length EEPROM READ: %d\n", newStrLen);
     // If the array was not initialized, return
     if (newStrLen == 255)
         return 0;
@@ -150,7 +150,7 @@ int WiFiAPSettingsClass::readStringFromEEPROM(int addrOffset, String* strToRead)
     }
     data[newStrLen] = '\0';
     *strToRead = String(data);
-    Serial.printf("EEPROM Read: %s\n", * strToRead);
+    //Serial.printf("EEPROM Read: %s\n", * strToRead);
     return addrOffset + 1 + newStrLen;
 }
 

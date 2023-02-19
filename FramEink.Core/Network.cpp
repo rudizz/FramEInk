@@ -70,6 +70,12 @@ void Network::getTime(char *timeStr, long offSet)
     // Copies time string into timeStr
     strcpy(timeStr, asctime(&timeinfo));
 }
+// Gets time from ntp server
+time_t Network::getNowEpoch()
+{
+    // Get seconds since 1.1.1970.
+    return time(nullptr) + (long)timeZone;
+}
 // Gets time struct from ntp server
 void Network::getTimeHour(int *timeHour, long offSet)
 {
