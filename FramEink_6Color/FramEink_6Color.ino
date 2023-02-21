@@ -476,12 +476,6 @@ void addEventToEntry(entry* dstEntry, time_t epochFirstDayShown,
                      time_t epochEvtFrom, time_t epochEvtTo,
                      char* summary, char* location, char* endEvent)
 {
-    // Assegno il valore Timestamp
-    dstEntry->timeStamp = epochEvtFrom;
-
-    // Definisco il giorno di inizio evento
-    dstEntry->day = (int)((float)(epochEvtFrom - epochFirstDayShown) / 24 / 3600);
-
     //  ====   DATA   ====
     // Creo la data a partire dall'epoch
     struct tm eventFrom, eventTo;
@@ -526,11 +520,20 @@ void addEventToEntry(entry* dstEntry, time_t epochFirstDayShown,
     //  ====   LOCATION   ====
     if (location && location < endEvent)
     {
-        strncpy(dstEntry->location, location, strchr(location, '\n') - location);
-        dstEntry->location[strchr(location, '\n') - location] = 0;
-        correggiApostrofo(dstEntry->location, strchr(location, '\n') - location);
-        correggiCarriageReturn(dstEntry->location, strchr(location, '\n') - location);
+        int lengthLocation = strchr(location, '\n') - location;
+        strncpy(dstEntry->location, location, lengthLocation);
+        dstEntry->location[lengthLocation] = 0;
+        correggiApostrofo(dstEntry->location, lengthLocation);
+        correggiCarriageReturn(dstEntry->location, lengthLocation);
     }
+
+    // Assegno il valore Timestamp
+    dstEntry->timeStamp = epochEvtFrom;
+
+    // Definisco il giorno di inizio evento
+    dstEntry->day = (int)((float)(epochEvtFrom - epochFirstDayShown) / 24 / 3600);
+    Serial.printf("epochFrom: %d , epochFirstDayShown: %d, day: %d\n", dstEntry->timeStamp, epochFirstDayShown, dstEntry->day);
+
 }
 
 // Format event times, example 13:00 to 14:00
@@ -860,13 +863,21 @@ void drawCalendarData()
         uint32_t giorniFrequenzaRipetizione = 0;
         if (rRule && rRule > beginEvt && rRule < endEvt && rRule < endCal)
         {
-          if (stringContain(rRule, "FREQ=WEEKLY"))
+          if (stringContain(rRule, "FREQ=DAILY"))
+          {
+            giorniFrequenzaRipetizione = 1;
+          }
+          else if (stringContain(rRule, "FREQ=WEEKLY"))
           {
               giorniFrequenzaRipetizione = 7;
           }
-          else if (stringContain(rRule, "FREQ=DAILY"))
+          else if (stringContain(rRule, "FREQ=MONTHLY"))
           {
-            giorniFrequenzaRipetizione = 1;
+              giorniFrequenzaRipetizione = 30;
+          }
+          else if (stringContain(rRule, "FREQ=YEARLY"))
+          {
+              giorniFrequenzaRipetizione = 365;
           }
             Serial.printf("Frequenza: %d\n", giorniFrequenzaRipetizione);
         }
@@ -905,75 +916,50 @@ void drawCalendarData()
         //Serial.printf("epochFirstDayShown: %d\n", epochFirstDayShown);
         //Serial.printf("epochLastDayShown: %d\n", epochLastDayShown);
 
-        // Se l'evento cade nei giorni visualizzati a calendario, li aggiungo alle Entries.
-        if ((epochFrom > epochFirstDayShown && epochFrom < epochLastDayShown) ||
-            (epochTo > epochFirstDayShown && epochTo < epochLastDayShown))
-        {
-            addEventToEntry(&entries[entriesNum], epochFirstDayShown,
-                epochFrom, epochTo, summary, location, endEvt);
-            entriesNum++;
-        }
-
-        // Gestisco i giorni con ripetizione.
+        // Inizializzo epochUntil con l'ultimo giorno visualizzato nel calendario,
+        // in modo che se non è presente il campo viene considerato infinito
+        // e i controlli finiscono l'ultimo giorno mostrato nel calendario.
+        time_t epochUntil = epochLastDayShown;
         if (giorniFrequenzaRipetizione)
         {
             // Cerco il parametro Until
             char* until = strstr(timeEnd, "UNTIL=") + 6;
             char* dtStamp = strstr(timeEnd, "DTSTAMP:") + 8;
-            // Lo inizializzo con l'ultimo giorno visualizzato nel calendario,
-            // in modo che se non è presente il campo viene considerato infinito.
-            time_t epochUntil = epochLastDayShown+1;
-            if (until < dtStamp)
+            if (until < dtStamp) // Se è vero, vuol dire che esiste il campo Until
             {
-                epochUntil = getEpoch(until);
+                // Limito il campo Until all'ultimo giorno visualizzato nel calendario.
+                epochUntil = min<time_t>(getEpoch(until), epochUntil);
             }
             Serial.printf("epoch until: %d\n", epochUntil);
-            //tm eventUntil;
-            //gmtime_r(&epochUntil, &eventUntil);
-            //Serial.printf("tm_yday1: %d, month: %d\n", eventUntil.tm_yday, eventUntil.tm_mon);
-            //eventUntil.tm_yday += 30;
-            //Serial.printf("tm_yday2: %d, month: %d\n", eventUntil.tm_yday, eventUntil.tm_mon);
-            //Serial.printf("event until: day %d , month %d, year: %d\n", eventUntil.tm_mday,
-            //    eventUntil.tm_mon,
-            //    eventUntil.tm_year);
-
-            // Aggiungo i giorni di freq ripetizione, interrompo quando arrivo all'utimo giorno di visualizzazione
-            // nel calendario
-            do
-            {
-                Serial.printf("epochFrom: %d , fRep: %d, lastDay: %d\n", epochFrom, giorniFrequenzaRipetizione, epochLastDayShown);
-                epochFrom += giorniFrequenzaRipetizione * DAYS_2_SEC;
-                epochTo += giorniFrequenzaRipetizione * DAYS_2_SEC;
-                if ((epochFrom > epochFirstDayShown && epochFrom < epochLastDayShown) ||
-                    (epochTo > epochFirstDayShown && epochTo < epochLastDayShown))
-                {
-                    addEventToEntry(&entries[entriesNum], epochFirstDayShown,
-                        epochFrom, epochTo, summary, location, endEvt);
-                    entriesNum++;
-                }
-
-            } while (epochFrom < epochLastDayShown || epochFrom < epochUntil);
         }
 
-        // -------------------------------------------------------------
+        do
+        {
+            //Serial.printf("epochFrom: %d , fRep: %d, lastDay: %d\n", epochFrom, giorniFrequenzaRipetizione, epochLastDayShown);
+            if ((epochFrom >= epochFirstDayShown && epochFrom <= epochUntil) ||
+                (epochTo >= epochFirstDayShown && epochTo <= epochUntil))
+            {
+                addEventToEntry(&entries[entriesNum], epochFirstDayShown,
+                    epochFrom, epochTo, summary, location, endEvt);
+                entriesNum++;
+                Serial.printf("ADD entriesNum: %d\n", entriesNum);
+            }
+            epochFrom = aggiungiEpochRipetizione(epochFrom, giorniFrequenzaRipetizione);
+            epochTo = aggiungiEpochRipetizione(epochTo, giorniFrequenzaRipetizione);
+                
+        } while (giorniFrequenzaRipetizione > 0 && epochFrom <= epochUntil);
 
-        //// Se l'inizio o fine dell'evento non cadono dentro ai giorni visualizzati,
-        //// passo all'evento successivo.
-        //if (epochFrom < epochFirstDayShown || epochFrom  > epochLastDayShown ||
-        //    epochTo < epochFirstDayShown || epochTo > epochLastDayShown)
-        //{
-        //    continue;
-        //}
-
-        //addEventToEntry(&entries[entriesNum], epochFirstDayShown,
-        //                epochFrom, epochTo, summary, location, endEvt);
-        //++entriesNum;
     }
-
     // Sort entries by timeStamp
     qsort(entries, entriesNum, sizeof(entry), cmp);
     Serial.printf("Eventi nel calendario: %d\n", entriesNum);
-
+    //for (size_t i = 0; i < entriesNum; i++)
+    //{
+    //    Serial.printf("%d - Day: %d, Sum: %s, Time: %s, Loc: %s, TS: %d\n", i, entries[i].day ,entries[i].name,
+    //        entries[i].time,
+    //        entries[i].location,
+    //        entries[i].timeStamp);
+    //}
     // Events displayed and overflown counters
     int columns[COLUMNS * ROWS] = { 0 };
     bool clogged[COLUMNS * ROWS] = { 0 };
@@ -1057,6 +1043,38 @@ void correggiCarriageReturn(char* text, size_t lengthText)
             text[i] = ' ';
         }
     }
+}
+
+time_t aggiungiEpochRipetizione(time_t epoch, uint16_t giorniFrequenzaRipetizione)
+{
+    time_t epochOut;
+    switch (giorniFrequenzaRipetizione)
+    {
+        case 1:
+        case 7:
+            epochOut =  epoch + giorniFrequenzaRipetizione * DAYS_2_SEC;
+            break;
+        case 30:
+            tm tm_epoch;
+            gmtime_r(&epoch, &tm_epoch);
+            if (tm_epoch.tm_mon == 12)
+            {
+                tm_epoch.tm_mon = 1;
+                tm_epoch.tm_year += 1;
+            }
+            else {
+                tm_epoch.tm_mon += 1;
+            }
+            epochOut = mktime(&tm_epoch);
+            break;
+        case 365:
+            tm tm_epochY;
+            gmtime_r(&epoch, &tm_epochY);
+            tm_epochY.tm_year += 1;
+            epochOut = mktime(&tm_epochY);
+            break;
+    }
+    return epochOut;
 }
 
 // ====  WEATHER drawing  ====
