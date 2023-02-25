@@ -216,7 +216,7 @@ int cmp(const void* a, const void* b);
 void drawCalendarData();
 void drawWeatherIcon(int beginX, int beginY, int heightIcon);
 void drawWeatherStrip();
-bool stringContain(char* str1, char* pattern);
+bool stringContain(char* str1, const char* pattern);
 
 void setup()
 {
@@ -473,7 +473,7 @@ void drawGrid()
 }
 
 void addEventToEntry(entry* dstEntry, time_t epochFirstDayShown,
-                     time_t epochEvtFrom, time_t epochEvtTo,
+                     time_t epochEvtFrom, time_t epochEvtTo, bool allDay,
                      char* summary, char* location, char* endEvent)
 {
     //  ====   DATA   ====
@@ -481,8 +481,10 @@ void addEventToEntry(entry* dstEntry, time_t epochFirstDayShown,
     struct tm eventFrom, eventTo;
     gmtime_r(&epochEvtFrom, &eventFrom);
     gmtime_r(&epochEvtTo, &eventTo);
-    // Se l'evento dura almeno un giorno intero, nella label dell'orario scrivo 'All-day'.
-    if (epochEvtTo - epochEvtFrom >= 3600L * 24)
+    // Se non è presente il tempo dopo la data, vuol dire che l'evento dura 'All-day'.
+    //char allDay[1];
+    //strncpy(allDay, epochEvtFrom +1, sizeof(char));
+    if (allDay)
     {
         strncpy(dstEntry->time, "All-day", 7);
     }
@@ -533,95 +535,6 @@ void addEventToEntry(entry* dstEntry, time_t epochFirstDayShown,
     // Definisco il giorno di inizio evento
     dstEntry->day = (int)((float)(epochEvtFrom - epochFirstDayShown) / 24 / 3600);
     Serial.printf("epochFrom: %d , epochFirstDayShown: %d, day: %d\n", dstEntry->timeStamp, epochFirstDayShown, dstEntry->day);
-
-}
-
-// Format event times, example 13:00 to 14:00
-// Restituisce True se il giorno deve essere visualizzato.
-bool setEventDate(char* dst, char* from, char* to, int* day, int* timeStamp, 
-                  uint32_t giorniFreqRipetizione, bool correctTimeZone)
-{
-    // ANSI C time struct
-    time_t epochFrom = getEpoch(from);
-    time_t epochTo = getEpoch(to);
-    time_t epochLastDayShown = network.getNowEpoch() + (COLUMNS * ROWS - 1) * 24 * 3600;
-    Serial.printf("lastDEpoch: %d\n", epochLastDayShown);
-    if (giorniFreqRipetizione)
-    {
-        // Cerco il parametro Until
-        char* until = strstr(to, "UNTIL=") + 6;
-        char* dtStamp = strstr(to, "DTSTAMP:") + 8;
-        time_t epochUntil;
-        if (until < dtStamp)
-        {
-            epochUntil = getEpoch(until);
-        }
-        Serial.printf("epoch until: %d\n", epochUntil);
-        tm eventUntil;
-        gmtime_r(&epochUntil, &eventUntil);
-        Serial.printf("tm_yday1: %d, month: %d\n", eventUntil.tm_yday, eventUntil.tm_mon);
-        eventUntil.tm_yday += 30;
-        Serial.printf("tm_yday2: %d, month: %d\n", eventUntil.tm_yday, eventUntil.tm_mon);
-        Serial.printf("event until: day %d , month %d, year: %d\n", eventUntil.tm_mday,
-                                                                    eventUntil.tm_mon, 
-                                                                    eventUntil.tm_year);
-        // Aggiungo i giorni di freq ripetizione, interrompo quando arrivo all'utimo giorno di visualizzazione
-        // nel calendario
-        while (epochFrom + giorniFreqRipetizione * 24 * 3600 < epochLastDayShown)
-        {
-            Serial.printf("epochFrom: %d , fRep: %d, lastDay: %d\n", epochFrom, giorniFreqRipetizione, epochLastDayShown);
-            epochFrom += giorniFreqRipetizione * 24 * 3600;
-            epochTo += giorniFreqRipetizione * 24 * 3600;
-        }
-    }
-    // Creo la data a partire dall'epoch
-    struct tm eventFrom, eventTo;
-    gmtime_r(&epochFrom, &eventFrom);
-    gmtime_r(&epochTo, &eventTo);
-
-    // Controllo in quale giorno rispetto a oggi, l'evento deve essere posizionato
-    // e copio l'informazione in *day.
-    bool isDayToBeShown = false;
-    char days[32];
-    // Definisco il giorno di inizio evento
-    // Find UNIX timestamps for next days to see where to put event
-    for (int i = 0; i < COLUMNS * ROWS; i++)
-    {
-        network.getTime(days, i * 24 * 3600);
-        if (strncmp(days, asctime(&eventFrom), 10) == 0)
-        {
-            *day = i;
-            isDayToBeShown = true;
-            break;
-        }
-        else // event not in next COLUMNS * ROWS days, don't display
-        {
-            *day = -1;
-        }
-    }
-    // Se il giorno non deve essere visualizzato, non proseguo oltre.
-    if (!isDayToBeShown)
-        return false;
-
-    // Assegno il valore Timestamp
-    *timeStamp = epochFrom;
-
-    // Se l'evento dura almeno un giorno intero, nella label dell'orario scrivo 'All-day'.
-    if (epochTo - epochFrom >= 3600L * 24)
-    {
-        strncpy(dst, "All-day", 7);
-    }
-    else {
-        // Scrivo l'ora di inizio in dst.
-        strncpy(dst, asctime(&eventFrom) + 11, 5);
-        dst[5] = ' ';
-        dst[6] = '-';
-        dst[7] = ' ';
-        // Scrivo l'ora di fine in dst
-        strncpy(dst + 8, asctime(&eventTo) + 11, 5);
-    }
-    dst[13] = 0;
-    return isDayToBeShown;
 }
 
 time_t getEpoch(char* dateString)
@@ -791,7 +704,7 @@ int cmp(const void* a, const void* b)
 }
 
 // Verifico se il pattern di una stringa è presente all'inizio della str1.
-bool stringContain(char* str1, char* pattern)
+bool stringContain(char* str1, const char* pattern)
 {
     return strspn(str1, pattern) == strlen(pattern);
 }
@@ -935,14 +848,39 @@ void drawCalendarData()
 
         do
         {
-            //Serial.printf("epochFrom: %d , fRep: %d, lastDay: %d\n", epochFrom, giorniFrequenzaRipetizione, epochLastDayShown);
             if ((epochFrom >= epochFirstDayShown && epochFrom <= epochUntil) ||
                 (epochTo >= epochFirstDayShown && epochTo <= epochUntil))
             {
-                addEventToEntry(&entries[entriesNum], epochFirstDayShown,
-                    epochFrom, epochTo, summary, location, endEvt);
-                entriesNum++;
-                Serial.printf("ADD entriesNum: %d\n", entriesNum);
+                Serial.printf("epochFrom: %d , fRep: %d, lastDay: %d\n", epochFrom, giorniFrequenzaRipetizione, epochLastDayShown);
+                bool excludeDate = false;
+                char* exdate = strstr(timeEnd, "EXDATE") + 6;
+                char* dtStamp = strstr(timeEnd, "DTSTAMP:");
+                if (exdate < dtStamp)
+                {
+                    // Se entro qui esiste almeno una data di esclusione.
+                    // Le ciclo tutte per vedere se ne esiste una che corrisponde con il
+                    // giorno di inizio evento
+                    do
+                    {
+                        exdate = strstr(exdate, ":") + 1;
+                        time_t epochExdate = getEpoch(exdate);
+                        if (epochExdate == epochFrom)
+                        {
+                            // Se il giorno dell'evento corrisponde con il giorno di esclusione,
+                            // esco dal ciclo ed non aggiungo tale evento alla visualizzazione. 
+                            excludeDate = true;
+                        }
+                        exdate = strstr(exdate, "EXDATE") + 6;
+                    } while (!excludeDate && exdate < dtStamp);
+                }
+                if (!excludeDate)
+                {
+                    addEventToEntry(&entries[entriesNum], epochFirstDayShown,
+                        epochFrom, epochTo, String(timeStart + 8, 1) != "T", summary, location, endEvt);
+                    Serial.printf("ADD entriesNum: %d, Summary: %s\n", entriesNum, entries[entriesNum].name);
+                    entriesNum++;
+
+                }
             }
             epochFrom = aggiungiEpochRipetizione(epochFrom, giorniFrequenzaRipetizione);
             epochTo = aggiungiEpochRipetizione(epochTo, giorniFrequenzaRipetizione);
