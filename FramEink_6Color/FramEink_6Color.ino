@@ -794,26 +794,26 @@ void drawCalendarData()
 
         // //Gestisco gli eventi ripetuti nel tempo. Per ora solo Daily e Weekly, Monthly e Yearly.
         char *rRule = strstr(beginEvt, "RRULE:") + 6;
-        uint32_t giorniFrequenzaRipetizione = 0;
+        size_t giorniFrequenzaRipetizione = 0;
+        size_t intervalloRipetizione = 1;
         if (rRule && rRule > beginEvt && rRule < endEvt && rRule < endCal)
         {
           if (stringContain(rRule, "FREQ=DAILY"))
-          {
             giorniFrequenzaRipetizione = 1;
-          }
           else if (stringContain(rRule, "FREQ=WEEKLY"))
-          {
               giorniFrequenzaRipetizione = 7;
-          }
           else if (stringContain(rRule, "FREQ=MONTHLY"))
-          {
               giorniFrequenzaRipetizione = 30;
-          }
           else if (stringContain(rRule, "FREQ=YEARLY"))
-          {
               giorniFrequenzaRipetizione = 365;
+          // Cerco l'intervallo
+          char* interval = strstr(rRule, ";INTERVAL=") + 10;
+          if (interval > rRule && interval < endEvt)
+          {
+              char* intervalEnd = strstr(interval, ";");
+              intervalloRipetizione = String(interval, intervalEnd - interval).toInt();
           }
-            Serial.printf("Frequenza: %d\n", giorniFrequenzaRipetizione);
+            Serial.printf("Frequenza: %d, intervalloRipetizione: %d\n", giorniFrequenzaRipetizione, intervalloRipetizione);
         }
         // Sequenza
 //        char *sequence = strstr(data + i, "SEQUENCE:") + 9;
@@ -881,10 +881,12 @@ void drawCalendarData()
         // Se il giorno di inizio e fine è diverso, correggo l'ora da scrivere nel calendario
         if (evtLastNDays < 0)
         {
-            // TODO: Gestire il cambio dell'anno
-            Serial.printf("yday1: %d, yday2: %d, evtLastNDays: %d\n", eventFrom.tm_yday, eventTo.tm_yday, evtLastNDays);
-            //eventTo.tm_year += 1;
-            //evtLastNDays = eventTo.tm_yday - eventFrom.tm_yday;
+            // Gestire il cambio dell'anno, considerando gli anni bisestili.
+            eventFrom.tm_mon = 11;
+            eventFrom.tm_mday = 31;
+            time_t evtFineAnno = mktime(&eventFrom);
+            gmtime_r(&evtFineAnno, &eventFrom);
+            evtLastNDays += eventFrom.tm_yday + 1;
         }
         time_t epochFromTemp = epochFrom;
         time_t epochToTemp = epochTo;
@@ -940,8 +942,12 @@ void drawCalendarData()
                             entriesNum++;
                     }
                 }
-                epochFrom = aggiungiEpochRipetizione(epochFrom, giorniFrequenzaRipetizione);
-                epochTo = aggiungiEpochRipetizione(epochTo, giorniFrequenzaRipetizione);
+                epochFrom = aggiungiEpochRipetizione(epochFrom,
+                                                     giorniFrequenzaRipetizione,
+                                                     intervalloRipetizione);
+                epochTo = aggiungiEpochRipetizione(epochTo, 
+                                                   giorniFrequenzaRipetizione,
+                                                   intervalloRipetizione);
                 
             } while (giorniFrequenzaRipetizione > 0 && epochFrom <= epochUntil);
         }
@@ -1041,7 +1047,7 @@ void correggiCarriageReturn(char* text, size_t lengthText)
     }
 }
 
-time_t aggiungiEpochRipetizione(time_t epoch, uint16_t giorniFrequenzaRipetizione)
+time_t aggiungiEpochRipetizione(time_t epoch, uint16_t giorniFrequenzaRipetizione, size_t intervalloRipetizione)
 {
     time_t epochOut;
     switch (giorniFrequenzaRipetizione)
@@ -1053,20 +1059,18 @@ time_t aggiungiEpochRipetizione(time_t epoch, uint16_t giorniFrequenzaRipetizion
         case 30:
             tm tm_epoch;
             gmtime_r(&epoch, &tm_epoch);
-            if (tm_epoch.tm_mon == 12)
+            tm_epoch.tm_mon += intervalloRipetizione;
+            if (tm_epoch.tm_mon > 11)
             {
-                tm_epoch.tm_mon = 1;
+                tm_epoch.tm_mon -= 12;
                 tm_epoch.tm_year += 1;
-            }
-            else {
-                tm_epoch.tm_mon += 1;
             }
             epochOut = mktime(&tm_epoch);
             break;
         case 365:
             tm tm_epochY;
             gmtime_r(&epoch, &tm_epochY);
-            tm_epochY.tm_year += 1;
+            tm_epochY.tm_year += intervalloRipetizione;
             epochOut = mktime(&tm_epochY);
             break;
     }

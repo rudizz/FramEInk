@@ -61,7 +61,7 @@ void Network::begin()
 void Network::getTime(char *timeStr, long offSet)
 {
     // Get seconds since 1.1.1970.
-    time_t nowSecs = time(nullptr) + (long)timeZone + offSet;
+    time_t nowSecs = getNowEpoch() + offSet;
 
     // Used to store time
     struct tm timeinfo;
@@ -80,7 +80,7 @@ time_t Network::getNowEpoch()
 void Network::getTimeHour(int *timeHour, long offSet)
 {
     // Get seconds since 1.1.1970.
-    time_t nowSecs = time(nullptr) + (long)timeZone + offSet;
+    time_t nowSecs = getNowEpoch() + offSet;
 
     // Used to store time
     struct tm timeinfo;
