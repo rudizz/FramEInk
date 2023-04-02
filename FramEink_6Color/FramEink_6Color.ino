@@ -905,9 +905,12 @@ void drawCalendarData()
             else
                 epochTo = epochToTemp;
 
+            // Manca da considerare l'evento:
+            // - Pro: inizio 18 feb 2023, dura 2 giorni interi con ripetizione settimanale e termine il 25 feb 2023
             do
             {
-                if ((epochFrom >= epochFirstDayShown && epochFrom <= epochUntil) ||
+                if (epochUntil > epochFirstDayShown &&
+                    (epochFrom >= epochFirstDayShown && epochFrom <= epochUntil) ||
                     (epochTo >= epochFirstDayShown && epochTo <= epochUntil) ||
                     (epochFrom < epochFirstDayShown && epochTo > epochUntil))
                 {
@@ -934,7 +937,7 @@ void drawCalendarData()
                             exdate = strstr(exdate, "EXDATE") + 6;
                         } while (!excludeDate && exdate < dtStamp);
                     }
-                    if (!excludeDate)
+                    if (!excludeDate && epochFrom > epochFirstDayShown)
                     {
                             addEventToEntry(&entries[entriesNum], epochFirstDayShown,
                                 epochFrom, epochTo, String(timeStart + 8, 1) != "T", summary, location, endEvt);

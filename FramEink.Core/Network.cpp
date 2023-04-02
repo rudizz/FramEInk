@@ -73,6 +73,9 @@ void Network::getTime(char *timeStr, long offSet)
 // Gets time from ntp server
 time_t Network::getNowEpoch()
 {
+    //return 1677327149; // 25 feb 2023
+    //return 1676722349; // 18 feb 2023
+    
     // Get seconds since 1.1.1970.
     return time(nullptr) + (long)timeZone;
 }
