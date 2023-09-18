@@ -41,6 +41,7 @@ class WiFiAPSettingsClass
 	 String Latitude_User;
 	 String Longitude_User;
 	 String ICALID_User;
+	 time_t Last_Awake_Epoch;
 
 };
 

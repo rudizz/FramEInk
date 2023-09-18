@@ -166,6 +166,7 @@ RTC_DATA_ATTR char nameWeather[6][32] = {
   "-",
 };
 
+RTC_DATA_ATTR time_t last_awake = 0;
 
 // Go to sleep before checking again
 const long long time_sleeping = 60ll; // [minutes] 180' = 3h sleep
@@ -298,6 +299,9 @@ void setup()
     else {
 
         network.begin(); // stampo su seriale la data e ora attuale
+        // Controllo che siano passati almeno 15 minuti dall'ultimo risveglio
+        checkLastAwake((long long)15);
+
         // ---  WEATHER  ---
         network.getDaysLabel(days[0], days[1], days[2], days[3]);
         network.getDataFromMetaWeather(&timeZone, temps_min[0], temps_min[1], temps_min[2], temps_min[3], temps_min[4], temps_min[5], currentTemp,
@@ -317,6 +321,7 @@ void setup()
                 delay(1000);
             }
         }
+
         //Serial.println(data); // stampo i dati grezzi del calendario
         // Drawing all data, functions for that are above
         display.clearDisplay();
@@ -357,6 +362,22 @@ void setup()
 void loop()
 {
     // Never here
+}
+
+/// <summary>
+/// Se non sono passati almeno 'minutes' dall'ultimo risveglio
+/// applico il deep sleep per 'minutes'
+/// </summary>
+/// <param name="minutes">Minuti minimi tra due risvegli</param>
+void checkLastAwake(long long minutes)
+{
+    Serial.printf("last awake: %d\n", network.getNowEpoch() - last_awake);
+    if (network.getNowEpoch() - last_awake < minutes * 60l)
+    {
+        esp_sleep_enable_timer_wakeup(minutes * MIN_2_MICROSEC);
+        (void)esp_deep_sleep_start();
+    }
+    last_awake = network.getNowEpoch();
 }
 
 // Function for drawing calendar info
@@ -474,7 +495,7 @@ void drawGrid()
 
 void addEventToEntry(entry* dstEntry, time_t epochFirstDayShown,
                      time_t epochEvtFrom, time_t epochEvtTo, bool allDay,
-                     char* summary, char* location, char* endEvent)
+                     char* summary, char* location, char* beginEvent, char* endEvent)
 {
     //  ====   DATA   ====
     // Creo la data a partire dall'epoch
@@ -498,10 +519,10 @@ void addEventToEntry(entry* dstEntry, time_t epochFirstDayShown,
         strncpy(dstEntry->time + 8, asctime(&eventTo) + 11, 5);
     }
     dstEntry->time[13] = 0; // indico la fine della stringa
-
+    
     //  ====   SUMMARY   ====
     // Parso il titolo dell'evento
-    if (summary && summary < endEvent)
+    if (summary > beginEvent && summary < endEvent)
     {
         int lengthSummary = strchr(summary, '\n') - summary;
         if (lengthSummary > MAX_N_CHAR_TITLE_CALENDAR)
@@ -520,7 +541,7 @@ void addEventToEntry(entry* dstEntry, time_t epochFirstDayShown,
     }
 
     //  ====   LOCATION   ====
-    if (location && location < endEvent)
+    if (location > beginEvent && location < endEvent)
     {
         int lengthLocation = strchr(location, '\n') - location;
         strncpy(dstEntry->location, location, lengthLocation);
@@ -822,12 +843,17 @@ void drawCalendarData()
 
 //        for (int seq = 0; seq <= atoi(sequence)
 
-        // Porto il begin un carattere dopo l'end
-        beginEvt = endEvt + 11;
 
         // --------  Controllo se l'evento è da visualizzare  -----------
         time_t epochFrom = getEpoch(timeStart);
         time_t epochTo = getEpoch(timeEnd);
+
+        if (epochTo < epochFrom)
+        {
+            // In questo caso c'è stato un errore nella lettura delle epoche, quindi passo all'evento successivo
+            Serial.printf("\nERRORE: epochFrom: %d, epochTo: %d\n", epochFrom, epochTo);
+            continue;
+        }
         // Se l'evento dura tutto il giorno, non è presente il campo di ore, min e sec.
         // Inoltre devo togliere 1 secondo da epochTo in modo che finisca alle 23:59.
         if (String(timeStart + 8, 1) != "T")
@@ -914,13 +940,17 @@ void drawCalendarData()
                     (epochTo >= epochFirstDayShown && epochTo <= epochUntil) ||
                     (epochFrom < epochFirstDayShown && epochTo > epochUntil))
                 {
-                    Serial.printf("epochFrom: %d, epochTo: %d, fRep: %d, lastDay: %d, iDay: %d\n", epochFrom, epochTo, giorniFrequenzaRipetizione, epochLastDayShown, iDay);
+                    Serial.printf("epochFrom: %d, epochTo: %d, fRep: %d, lastDay: %d, iDay: %d, evtLastNDays: %d\n", 
+                        epochFrom, epochTo, giorniFrequenzaRipetizione, epochLastDayShown, iDay, evtLastNDays);
                     // -- Giorni di Esclusione --
                     bool excludeDate = false;
                     char* exdate = strstr(timeEnd, "EXDATE") + 6;
                     char* dtStamp = strstr(timeEnd, "DTSTAMP:");
-                    if (exdate < dtStamp)
+                    char summ[16];
+                    strncpy(summ, summary, 16);
+                    if (exdate < dtStamp && exdate > beginEvt)
                     {
+                        //strncpy(summ, exdate, 16);
                         // Se entro qui esiste almeno una data di esclusione.
                         // Le ciclo tutte per vedere se ne esiste una che corrisponde con il
                         // giorno di inizio evento
@@ -937,12 +967,12 @@ void drawCalendarData()
                             exdate = strstr(exdate, "EXDATE") + 6;
                         } while (!excludeDate && exdate < dtStamp);
                     }
-                    if (!excludeDate && epochFrom > epochFirstDayShown)
+                    if (!excludeDate && epochFrom > epochFirstDayShown && entriesNum < MAX_CALENDAR_EVENTS)
                     {
-                            addEventToEntry(&entries[entriesNum], epochFirstDayShown,
-                                epochFrom, epochTo, String(timeStart + 8, 1) != "T", summary, location, endEvt);
-                            Serial.printf("ADD entriesNum: %d, Summary: %s\n", entriesNum, entries[entriesNum].name);
-                            entriesNum++;
+                        addEventToEntry(&entries[entriesNum], epochFirstDayShown,
+                                epochFrom, epochTo, String(timeStart + 8, 1) != "T", summary, location, beginEvt, endEvt);
+                        Serial.printf("[ADD] entriesNum: %d, Summary: %s\n\n", entriesNum, entries[entriesNum].name);
+                        entriesNum++;
                     }
                 }
                 epochFrom = aggiungiEpochRipetizione(epochFrom,
@@ -954,6 +984,9 @@ void drawCalendarData()
                 
             } while (giorniFrequenzaRipetizione > 0 && epochFrom <= epochUntil);
         }
+
+        // Porto il begin un carattere dopo l'end
+        beginEvt = endEvt + 11;
     }
     // Sort entries by timeStamp
     qsort(entries, entriesNum, sizeof(entry), cmp);
