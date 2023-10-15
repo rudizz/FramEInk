@@ -13,22 +13,68 @@
 // Convert Days to Seconds
 #define DAYS_2_SEC 24 * 3600ll
 
+// alloco 2Mb su RAM extra del ESP32, usati per scaricare l'intero calendario
+#define SIZE_CALENDAR_DATA 2000000L
+
 #pragma endregion
 
-//struct entry
-//{
-//    char name[MAX_N_CHAR_TITLE_CALENDAR];
-//    char time[14];
-//    char location[64];
-//    int day = -1;
-//    int timeStamp;
+#pragma region VARIABLES
+
+static float moon_phase[6] = { 0, 0, 0, 0, 0, 0 };
+static char abbr_days[6][16];
+
+// Variables for storing temperature
+static char temps_min[8][6] = {
+    "0F",
+    "0F",
+    "0F",
+    "0F",
+    "0F",
+    "0F",
+};
+static char temps_max[8][6] = {
+    "0F",
+    "0F",
+    "0F",
+    "0F",
+    "0F",
+    "0F",
+};
+static char predictability[8][6] = {
+    "0F",
+    "0F",
+    "0F",
+    "0F",
+    "0F",
+    "0F",
+};
+//// Variables for storing days of the week
+//static char days[8][4] = {
+//    "",
+//    "",
+//    "",
+//    "",
 //};
+// Variables for storing current time and weather info
+static char city[128] = "";
+static char currentTemp[16] = "0F";
+static char currentWind[16] = "0m/s";
+static char currentTime[16] = "00:00";
+static char nameWeather[6][32] = {
+  "-",
+  "-",
+  "-",
+  "-",
+  "-",
+  "-",
+};
+
+#pragma endregion
 
 #pragma region Functions
 
 // Verifico se il pattern di una stringa è presente all'inizio della str1.
 bool stringContain(char* str1, const char* pattern);
-
 
 /// <summary>
 /// Se non sono passati almeno 'minutes' dall'ultimo risveglio
@@ -49,4 +95,5 @@ time_t aggiungiEpochRipetizione(time_t epoch, uint16_t giorniFrequenzaRipetizion
 void addEventToEntry(EventClass* dstEntry, time_t epochFirstDayShown, time_t epochEvtFrom, time_t epochEvtTo, bool allDay, char* summary, char* location, char* beginEvent, char* endEvent);
 
 #pragma endregion
+
 #endif

@@ -18,6 +18,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)CommonFunctions.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)EventClass.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeMono12pt7b.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeMono18pt7b.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeMono24pt7b.h" />
@@ -85,6 +86,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)CommonFunctions.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)EventClass.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Network.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)SDPhoto.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)WiFiAccessPoint\WiFiAPSettings.cpp" />

@@ -35,20 +35,20 @@
 #endif
 
 // Include Inkplate library to the sketch
-#include "EventClass.h"
 #include "Inkplate.h"
 #include "SDPhoto.h"
+#include "EventClass.h"
 
 #include "fonts.h"
 #include "icons_color.h"
 
 #include "Network.h"
 #include "CommonFunctions.h"
+#include "WiFiAccessPoint/WiFiAPSettings.h"
 #include <algorithm>
 #include <ctime>
-#include <uICAL.h>
+//#include <uICAL.h>
 
-#include "WiFiAccessPoint/WiFiAPSettings.h"
 //#include "WiFiAccessPoint/HTMLSettingsPage.h"
 
 // WiFi Credentials ---------------
@@ -91,7 +91,6 @@ RTC_DATA_ATTR bool settingsOK = false; // viene messa a true dopo che vengono se
 
 // WEATHER  -----------------
 // City filled by query
-char city[128] = "";
 #define icon_height 88
 // height of the weather strip
 int headerWeather = 40; // qui verrà aggiunto icon_height
@@ -101,7 +100,7 @@ const uint16_t colorWeatherTempMin = INKPLATE_BLUE;
 const uint16_t colorWeatherName = INKPLATE_BLACK;
 
 // Constants used for drawing icons
-char abbrs[9][4] = { "01d", "02d", "03d", "04d", "09d", "10d", "11d", "13d", "50d" };
+const char abbrs[9][4] = { "01d", "02d", "03d", "04d", "09d", "10d", "11d", "13d", "50d" };
 const uint8_t *color_icons[9] = { color_01d_clear, color_02d_few_clouds, color_03d_scattered_clouds,
                                     color_04d_broken_clouds, color_09d_shower_rain, color_10d_rain,
                                     color_11d_thunderstorm, color_13d_snow, color_50d_mist };
@@ -118,59 +117,9 @@ const uint8_t* moon_phases_1bit[27] = {moon_phase_0, moon_phase_0_04, moon_phase
                                     moon_phase_0_73, moon_phase_0_77, moon_phase_0_81, moon_phase_0_85, moon_phase_0_89,
                                     moon_phase_0_93, moon_phase_0_96 };
 const int moon_phase_icon_size = moon_phase_0_w;
-float moon_phase[6] = { 0, 0, 0, 0, 0, 0};
-RTC_DATA_ATTR char abbr_days[6][16];
-
-// Variables for storing temperature
-RTC_DATA_ATTR char temps_min[8][6] = {
-    "0F",
-    "0F",
-    "0F",
-    "0F",
-    "0F",
-    "0F",
-};
-RTC_DATA_ATTR char temps_max[8][6] = {
-    "0F",
-    "0F",
-    "0F",
-    "0F",
-    "0F",
-    "0F",
-};
-RTC_DATA_ATTR char predictability[8][6] = {
-    "0F",
-    "0F",
-    "0F",
-    "0F",
-    "0F",
-    "0F",
-};
-// Variables for storing days of the week
-RTC_DATA_ATTR char days[8][4] = {
-    "",
-    "",
-    "",
-    "",
-};
-// Variables for storing current time and weather info
-RTC_DATA_ATTR char currentTemp[16] = "0F";
-RTC_DATA_ATTR char currentWind[16] = "0m/s";
-
-RTC_DATA_ATTR char currentTime[16] = "9:41";
-
-RTC_DATA_ATTR char nameWeather[6][32] = {
-  "-",
-  "-",
-  "-",
-  "-",
-  "-",
-  "-",
-};
-
 
 // Go to sleep before checking again
-const long long time_sleeping = 60ll; // [minutes] 180' = 3h sleep
+long long time_sleeping = 60ll; // [minutes] 180' = 3h sleep
 
 // Initiate out Inkplate object
 Inkplate display;
@@ -184,9 +133,8 @@ RTC_DATA_ATTR bool stateCalendar = true; // true: Calendar+landscapePhoto ; fals
 Network network;
 
 // Variables for time and raw event info
-char date[64];
-char* data;
-
+char dateTime[64];
+char* dataCalendar;
 
 // Here we store calendar entries
 EventClass entries[EventClass::MAX_CALENDAR_EVENTS];
@@ -198,7 +146,7 @@ void drawBattery();
 void drawGrid();
 //bool getToFrom(char* dst, char* from, char* to, int* day, int* timeStamp, bool correctTimeZone);
 bool drawEvent(EventClass* event, int day, int beginY, int maxHeigth, int* heigthNeeded);
-int cmp(const void* a, const void* b);
+int cmpEvents(const void* a, const void* b);
 void drawCalendarData();
 void drawWeatherIcon(int beginX, int beginY, int heightIcon);
 void drawWeatherStrip();
@@ -229,8 +177,8 @@ void setup()
     display.setRotation(ROTATION);
     display.setTextWrap(false);
 
-    settingsOK = true; // debug
-    delay(10000); // debug
+    //settingsOK = true; // debug
+    //delay(10000); // debug
     wiFiAPSettings = new WiFiAPSettingsClass();
     if (!settingsOK)
     {
@@ -287,8 +235,8 @@ void setup()
         Serial.printf("last awake: %d\n", checkLastAwake(15ll, network.getNowEpoch()));
 
         // ---  WEATHER  ---
-        network.getDaysLabel(days[0], days[1], days[2], days[3]);
-        network.getDataFromMetaWeather(&timeZone, temps_min[0], temps_min[1], temps_min[2], temps_min[3], temps_min[4], temps_min[5], currentTemp,
+        //network.getDaysLabel(days[0], days[1], days[2], days[3]);
+        network.getDataFromOpenWeather(&timeZone, temps_min[0], temps_min[1], temps_min[2], temps_min[3], temps_min[4], temps_min[5], currentTemp,
             temps_max[0], temps_max[1], temps_max[2], temps_max[3], temps_max[4], temps_max[5],
             predictability[0], predictability[1], predictability[2], predictability[3], predictability[4], predictability[5],
             currentWind, currentTime, nameWeather[0], nameWeather[1], nameWeather[2], nameWeather[3], nameWeather[4], nameWeather[5],
@@ -297,9 +245,9 @@ void setup()
 
         // ---  CALENDAR  ---
         if (calendarURL != "") {
-            data = (char*)ps_malloc(1000000L); // alloco 1Mb su RAM extra del ESP32
+            dataCalendar = (char*)ps_malloc(SIZE_CALENDAR_DATA); // alloco 2Mb su RAM extra del ESP32
             // Keep trying to get data if it fails the first time
-            while (!network.getDataCalendar(data))
+            while (!network.getDataCalendar(dataCalendar))
             {
                 Serial.println("Failed getting data, retrying");
                 delay(1000);
@@ -331,12 +279,12 @@ void setup()
     Serial.printf("counterPortrait: %d, counterLandscape: %d\n", counterPortrait, counterLandscape);
 
     // Se si sveglia tra le 23:00 e l' 1:59, imposto a 6 ore il tempo di sleep
-    //int timeHour;
-    //network.getTimeHour(&timeHour, 0);
-    //if (timeHour >= 23 || timeHour < 2)
-    //{
-    //    //time_sleeping = 360ll; // 6h sleep
-    //}
+    int timeHour;
+    network.getTimeHour(&timeHour, 0);
+    if (timeHour >= 23 || timeHour < 2)
+    {
+        time_sleeping = 360ll; // 6h sleep
+    }
     Serial.print("Sleep time [us]: ");
     Serial.println(time_sleeping * MIN_2_MICROSEC);
     esp_sleep_enable_timer_wakeup(time_sleeping * MIN_2_MICROSEC);
@@ -361,7 +309,7 @@ void drawInfo()
 
     // Find email in raw data
     char temp[64];
-    char* start = strstr(data, "X-WR-CALNAME:");
+    char* start = strstr(dataCalendar, "X-WR-CALNAME:");
 
     // If not found return
     if (!start)
@@ -389,12 +337,12 @@ void drawTime()
     display.setCursor(marginLeft + 500, marginUp + 22);
 
     // Our function to get time
-    network.getTime(date);
+    network.getTime(dateTime);
 
-    int t = date[16];
-    date[16] = 0;
-    display.println(date);
-    date[16] = t;
+    int t = dateTime[16];
+    dateTime[16] = 0;
+    display.println(dateTime);
+    dateTime[16] = t;
 }
 
 void drawBattery()
@@ -600,7 +548,7 @@ bool drawEvent(EventClass* event, int day, int beginY, int maxHeigth, int* heigt
 }
 
 // Struct event comparison function, by timestamp, used for qsort later on
-int cmp(const void* a, const void* b)
+int cmpEvents(const void* a, const void* b)
 {
     EventClass* entryA = (EventClass*)a;
     EventClass* entryB = (EventClass*)b;
@@ -611,8 +559,8 @@ int cmp(const void* a, const void* b)
 // Main data drawing data
 void drawCalendarData()
 {
-    char* beginEvt = data + 1;
-    char* endCal = data + strlen(data)-1;
+    char* beginEvt = dataCalendar + 1;
+    char* endCal = dataCalendar + strlen(dataCalendar)-1;
 
     // Creo le epoch della finestra di inizio e fine giorni da visualizzare.
     // Finestra è dalle 00:00 del primo giorno alle 23:59 dell'ultimo giorno.
@@ -647,7 +595,7 @@ void drawCalendarData()
     //}
 
     // Sort entries by timeStamp
-    qsort(entries, entriesNum, sizeof(EventClass), cmp);
+    qsort(entries, entriesNum, sizeof(EventClass), cmpEvents);
     Serial.printf("Eventi nel calendario: %d\n", entriesNum);
     //for (size_t i = 0; i < entriesNum; i++)
     //{

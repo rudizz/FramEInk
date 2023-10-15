@@ -17,6 +17,7 @@ time_t checkLastAwake(long long minutes, time_t nowEpoch)
     time_t diffLastAwake = nowEpoch - last_awake;
     if (nowEpoch - last_awake < minutes * 60l)
     {
+        Serial.println("Last awake too soon. Let's sleep again.");
         esp_sleep_enable_timer_wakeup(minutes * MIN_2_MICROSEC);
         (void)esp_deep_sleep_start();
     }
@@ -253,8 +254,8 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
                     bool excludeDate = false;
                     char* exdate = strstr(timeEnd, "EXDATE") + 6;
                     char* dtStamp = strstr(timeEnd, "DTSTAMP:");
-                    char summ[16];
-                    strncpy(summ, summary, 16);
+                    //char summ[16];
+                    //strncpy(summ, summary, 16);
                     if (exdate < dtStamp && exdate > beginEvt)
                     {
                         //strncpy(summ, exdate, 16);
@@ -268,11 +269,12 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
                             if (epochExdate == epochFrom)
                             {
                                 // Se il giorno dell'evento corrisponde con il giorno di esclusione,
-                                // esco dal ciclo ed non aggiungo tale evento alla visualizzazione. 
+                                // esco dal ciclo e non aggiungo tale evento alla visualizzazione. 
                                 excludeDate = true;
                             }
+                            // Cerco se esiste un altro campo EXDATE, se non esiste esco dal while
                             exdate = strstr(exdate, "EXDATE") + 6;
-                        } while (!excludeDate && exdate < dtStamp);
+                        } while (!excludeDate && exdate < dtStamp && exdate > beginEvt);
                     }
                     if (!excludeDate && epochFrom > epochFirstDayShown && entriesNum < EventClass::MAX_CALENDAR_EVENTS)
                     {

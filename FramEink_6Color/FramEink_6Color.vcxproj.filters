@@ -163,9 +163,6 @@
     <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_96.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="EventClass.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="binary_Icons\icon_color\weather\autumn.bmp">
@@ -297,10 +294,5 @@
     <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_96.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="EventClass.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
 </Project>

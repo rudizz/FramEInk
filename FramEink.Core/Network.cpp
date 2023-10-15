@@ -18,7 +18,6 @@ Distributed as-is; no warranty is given.
 
 
 #include <ArduinoJson.h>
-#include <uICAL.h>
 
 // Static Json from ArduinoJson library
 StaticJsonDocument<6000> doc;
@@ -71,6 +70,7 @@ void Network::getTime(char *timeStr, long offSet)
     // Copies time string into timeStr
     strcpy(timeStr, asctime(&timeinfo));
 }
+
 // Gets time from ntp server
 time_t Network::getNowEpoch()
 {
@@ -80,6 +80,7 @@ time_t Network::getNowEpoch()
     // Get seconds since 1.1.1970.
     return time(nullptr) + (long)timeZone;
 }
+
 // Gets time struct from ntp server
 void Network::getTimeHour(int *timeHour, long offSet)
 {
@@ -143,44 +144,21 @@ bool Network::getDataCalendar(char *data)
 
     if (httpCode == 200)
     {
-        //String length = http.getStream().readStringUntil('\n');
-        //Serial.println("Test1");
-        //Serial.println("Test0");
-        //uICAL::Calendar cal = uICAL::Calendar();
-        //Serial.println("Test1");
-        //try
-        //{
-        //    Serial.println("Test2");
-        //    uICAL::istream_Stream istm = uICAL::istream_Stream(http.getStream());
-        //    Serial.println("Test3");
-        //    cal.load(istm);
-        //    Serial.println("Test4");
-        //}
-        //catch (uICAL::Error ex) {
-        //    Serial.println(sprintf("%s: %s", ex.message.c_str(), "! Failed loading uICAL calendar"));
-        //    //stop();
-        //}
-
-        //unsigned now = g_ntpClient.getUnixTime();
-
-        //uICAL::DateTime calBegin(now);
-        //uICAL::DateTime calEnd(now + 86400);
-
         long n = 0;
         long timeCal = millis();
         size_t conta = 0;
         //while (memoryNotFull && !stringContain(data, "END:VCALENDAR"))
         //{
          
-        // Limito il while al max size del buffer 1000000L
-        while (n - 4 < 1000000L && http.getStream().available()) {
+        // Limito il while al max size del buffer SIZE_CALENDAR_DATA
+        while (n - 4 < SIZE_CALENDAR_DATA && http.getStream().available()) {
             data[n++] = http.getStream().read();
             conta = 0;
             //if (n < 1000) // print calendar data
             //    Serial.print(data[n-1]);
             while (!http.getStream().available() && conta < 10) // aggiungo questo controllo altrimenti esce prima di aver scaricato tutto
             {
-                delay(20);
+                delay(30);
                 Serial.printf("Calendar waiting %i...\n", conta);
                 conta++;
             }
@@ -188,23 +166,7 @@ bool Network::getDataCalendar(char *data)
         //data[n] = 0;
         //}
         Serial.printf("Calendar downloaded in [ms]: %d, %i bytes\n", millis() - timeCal, n);
-
         data[n++] = 0;
-
-        //Serial.println("Test0");
-        ////uICAL::Calendar cal = uICAL::Calendar();
-        //Serial.println("Test1");
-        //const String sss = String(data);
-        //Serial.println("Test2");
-        //Serial.printf("string: %s\n", sss.substring(n-18));
-        //uICAL::istream_String iStr = uICAL::istream_String(sss);
-        //Serial.println("Test3");
-        //char aa = iStr.get();
-        // aa = iStr.get();
-        //Serial.println("Test4");
-        //Serial.printf("aa: %c\n", aa);
-        //uICAL::Calendar_ptr cal = uICAL::Calendar::load(iStr);
-        //Serial.println("Test5");
     }
     else
     {
@@ -234,7 +196,7 @@ void formatWind(char *str, float wind)
     dtostrf(wind, 2, 0, str);
 }
 
-void Network::getDataFromMetaWeather(int *timezone_offset, char *temp_min0, char *temp_min1, char *temp_min2, char *temp_min3, char *temp_min4, char *temp_min5, char *currentTemp,
+void Network::getDataFromOpenWeather(int *timezone_offset, char *temp_min0, char *temp_min1, char *temp_min2, char *temp_min3, char *temp_min4, char *temp_min5, char *currentTemp,
                       char *temp_max0, char *temp_max1, char *temp_max2, char *temp_max3, char *temp_max4, char *temp_max5,
                       char *predictability0, char *predictability1, char *predictability2, char *predictability3, char *predictability4, char *predictability5,
                       char *currentWind, char *currentTime, char *currentWeather0, char *currentWeather1,

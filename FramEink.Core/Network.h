@@ -15,6 +15,7 @@ Distributed as-is; no warranty is given.
 */
 
 #include "Arduino.h"
+#include "CommonFunctions.h"
 
 #include <HTTPClient.h>
 #include <WiFi.h>
@@ -43,7 +44,7 @@ class Network
     time_t getNowEpoch();
     void getTimeHour(int *timeHour, long offSet);
     bool getDataCalendar(char *data);
-    void getDataFromMetaWeather(int * timezone_offset, char *temp_min0, char *temp_min1, char *temp_min2, char *temp_min3, char *temp_min4, char *temp_min5, char *currentTemp,
+    void getDataFromOpenWeather(int * timezone_offset, char *temp_min0, char *temp_min1, char *temp_min2, char *temp_min3, char *temp_min4, char *temp_min5, char *currentTemp,
                       char *temp_max0, char *temp_max1, char *temp_max2, char *temp_max3, char *temp_max4, char *temp_max5,
                       char *predictability0, char *predictability1, char *predictability2, char *predictability3, char *predictability4, char *predictability5,
                       char *currentWind, char *currentTime, char *currentWeather0, char *currentWeather1,
