@@ -48,6 +48,7 @@
 
 // Includes
 #include "Network.h"
+#include "CommonFunctions.cpp"
 #include <algorithm>
 #include <ctime>
 
@@ -191,7 +192,6 @@ int cmp(const void* a, const void* b);
 void drawCalendarData();
 void drawWeatherIcon(int beginX, int beginY, int heightIcon);
 void drawWeatherStrip();
-bool stringContain(char* str1, char* pattern);
 
 void setup()
 {
@@ -618,12 +618,6 @@ int cmp(const void* a, const void* b)
     entry* entryB = (entry*)b;
 
     return (entryA->timeStamp - entryB->timeStamp);
-}
-
-// Verifico se il pattern di una stringa è presente all'inizio della str1.
-bool stringContain(char* str1, char* pattern)
-{
-    return strspn(str1, pattern) == strlen(pattern);
 }
 
 // Main data drawing data

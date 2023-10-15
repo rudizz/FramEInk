@@ -16,6 +16,7 @@ Distributed as-is; no warranty is given.
 
 #include "Network.h"
 
+
 #include <ArduinoJson.h>
 #include <uICAL.h>
 
@@ -92,7 +93,7 @@ void Network::getTimeHour(int *timeHour, long offSet)
     // Copies time string into timeStr
     *timeHour = timeinfo.tm_hour;
 }
-// Function to get all war data from web
+// Function to get all calendar data from web
 bool Network::getDataCalendar(char *data)
 {
     // Variable to store fail
@@ -144,17 +145,19 @@ bool Network::getDataCalendar(char *data)
     {
         //String length = http.getStream().readStringUntil('\n');
         //Serial.println("Test1");
-        //uICAL::Calendar_ptr cal = nullptr;
+        //Serial.println("Test0");
+        //uICAL::Calendar cal = uICAL::Calendar();
+        //Serial.println("Test1");
         //try
         //{
         //    Serial.println("Test2");
-        //    uICAL::istream_Stream istm(http.getStream());
+        //    uICAL::istream_Stream istm = uICAL::istream_Stream(http.getStream());
         //    Serial.println("Test3");
-        //    cal = uICAL::Calendar::load(istm);
+        //    cal.load(istm);
         //    Serial.println("Test4");
         //}
         //catch (uICAL::Error ex) {
-        //    Serial.println(sprintf("%s: %s", ex.message.c_str(), "! Failed loading calendar"));
+        //    Serial.println(sprintf("%s: %s", ex.message.c_str(), "! Failed loading uICAL calendar"));
         //    //stop();
         //}
 
@@ -166,22 +169,42 @@ bool Network::getDataCalendar(char *data)
         long n = 0;
         long timeCal = millis();
         size_t conta = 0;
+        //while (memoryNotFull && !stringContain(data, "END:VCALENDAR"))
+        //{
+         
         // Limito il while al max size del buffer 1000000L
-        while (n + 4 < 1000000L && http.getStream().available()) {
+        while (n - 4 < 1000000L && http.getStream().available()) {
             data[n++] = http.getStream().read();
             conta = 0;
             //if (n < 1000) // print calendar data
             //    Serial.print(data[n-1]);
             while (!http.getStream().available() && conta < 10) // aggiungo questo controllo altrimenti esce prima di aver scaricato tutto
             {
-                delay(10);
-                Serial.println("Calendar waiting...");
+                delay(20);
+                Serial.printf("Calendar waiting %i...\n", conta);
                 conta++;
             }
-        } 
-        Serial.printf("Calendar downloaded in [ms]: %d\n", millis() - timeCal);
+        }
+        //data[n] = 0;
+        //}
+        Serial.printf("Calendar downloaded in [ms]: %d, %i bytes\n", millis() - timeCal, n);
 
         data[n++] = 0;
+
+        //Serial.println("Test0");
+        ////uICAL::Calendar cal = uICAL::Calendar();
+        //Serial.println("Test1");
+        //const String sss = String(data);
+        //Serial.println("Test2");
+        //Serial.printf("string: %s\n", sss.substring(n-18));
+        //uICAL::istream_String iStr = uICAL::istream_String(sss);
+        //Serial.println("Test3");
+        //char aa = iStr.get();
+        // aa = iStr.get();
+        //Serial.println("Test4");
+        //Serial.printf("aa: %c\n", aa);
+        //uICAL::Calendar_ptr cal = uICAL::Calendar::load(iStr);
+        //Serial.println("Test5");
     }
     else
     {

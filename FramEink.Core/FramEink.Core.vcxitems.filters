@@ -7,6 +7,7 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)Network.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)SDPhoto.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)WiFiAccessPoint\WiFiAPSettings.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)CommonFunctions.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeMono12pt7b.h" />
@@ -73,5 +74,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSansSerif14pt7b.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)WiFiAccessPoint\WiFiAPSettings.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)WiFiAccessPoint\HTMLSettingsPage.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)CommonFunctions.h" />
   </ItemGroup>
 </Project>
