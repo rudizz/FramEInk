@@ -371,7 +371,17 @@ void drawGrid()
     // Banda leggera di intestazione, dietro alle label dei giorni
     for (int i = 0; i < n; i++)
     {
-        display.fillRect(x1, (int)((float)y1 + (float)i * (float)(y2 - y1) / (float)n), x2 - x1, headerDay-thickLineGrid, 6);
+        // Disegno la banda con colore light_gray
+        for (size_t row = 0; row < headerDay; row += light_gray_h)
+        {
+            for (size_t col = 0; col < x2; col += light_gray_w)
+            {
+                display.drawBitmap3Bit(x1 + col, y1 + row + (float)i * (float)(y2 - y1) / (float)n, light_gray, light_gray_w, light_gray_h);
+            }
+        }
+        // Disegno una linea di separazione leggermente più scura del light_gray
+        display.fillRect(x1, (int)((float)y1 + headerDay - thickLineGrid + (float)i * (float)(y2 - y1) / (float)n), (x2 - x1), thickLineGrid, 6);
+
     }
 
     // Line drawing
@@ -667,7 +677,7 @@ int drawWeatherLabel(int x, int y, int day)
     int16_t x1, y1;
     uint16_t w, h;
     display.getTextBounds(nameWeather[day], 0, 0, &x1, &y1, &w, &h); //calc width of new string
-    return x1 + w;
+    return x + w;
 }
 // TEMPERATURE
 void drawWeatherTemp(int x, int y, int day)
@@ -677,13 +687,15 @@ void drawWeatherTemp(int x, int y, int day)
     display.setCursor(x, y);
     display.print(temps_max[day]);
     display.setFont(&FreeSans12pt7b);
-    display.println("° C");
+    //display.println("° C");
     // Temp Min
     display.setFont(&FreeSans18pt7b);
     display.setCursor(x, y + 40);
     display.print(temps_min[day]);
     display.setFont(&FreeSans12pt7b);
-    display.println(F("° C"));
+    //display.println(F("° C"));
+    
+    display.drawBitmap3Bit(x + 50, y - 28, termometro, termometro_w, termometro_h);
 }
 // PREDICTABILITY
 void drawWeatherPredictability(int x, int y, int day)
@@ -705,7 +717,7 @@ void drawWeatherStrip()
     {
         int xBegin = marginLeft + cellWidth * (day % COLUMNS) + padLeft;
         int yBegin = marginUp + headerCalendarName + headerDay + (day / COLUMNS) * cellHeight + padUp;
-        drawWeatherIcon(xBegin, yBegin, day);
+        drawWeatherIcon(xBegin, yBegin + 5, day);
         int xEndWeatherLabel = drawWeatherLabel(xBegin, yBegin + headerWeather - 7, day);
         drawWeatherTemp(xBegin + icon_height + 30, yBegin + 40, day);
         //drawWeatherPredictability(xBegin + icon_height + 80, yBegin + headerWeather - 7, day);
@@ -716,7 +728,7 @@ void drawWeatherStrip()
             strcmp(abbr_days[day], "09d") == 0 ||
             strcmp(abbr_days[day], "13d") == 0) // Snow
         {
-            drawWeatherPredictability(xEndWeatherLabel + 35, yBegin + headerWeather - 7, day);
+            drawWeatherPredictability(xEndWeatherLabel + 25, yBegin + headerWeather - 7, day);
         }
         // Moon
         uint8_t index_moon = (uint8_t)round(moon_phase[day] * sizeof(moon_phases_1bit) / sizeof(moon_phases_1bit[0]));

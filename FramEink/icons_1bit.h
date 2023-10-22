@@ -52,4 +52,9 @@
 #include "binary_Icons/moon_phases/moon_phase_0_93.h"
 #include "binary_Icons/moon_phases/moon_phase_0_96.h"
 
+// Background
+#include "binary_Icons/light_gray.h"
+
+#include "binary_Icons/termometro.h"
+
 #endif
