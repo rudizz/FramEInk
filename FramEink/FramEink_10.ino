@@ -81,10 +81,10 @@ int headerCalendarName = 30;
 // header height, for day info
 int headerDay = 40;
 // margini della tabella
-int marginLeft = 3;
-int marginRight = 3;
+int marginLeft = -3;
+int marginRight = 0;
 int marginUp = 0;
-int marginDown = 0;
+int marginDown = -2;
 int colorGrid = 2;
 float thickLineGrid = 2.0;
 const uint16_t colorCalendarTitle = 0;
@@ -362,7 +362,7 @@ void drawBattery()
 void drawGrid()
 {
     // upper left and low right coordinates
-    int x1 = marginLeft + thickLineGrid, y1 = headerCalendarName + marginUp;
+    int x1 = marginLeft, y1 = headerCalendarName + marginUp;
     int x2 = WIDTH - marginRight, y2 = HEIGHT - HEIGHT_PHOTO - marginDown;
 
     // Columns and rows
@@ -718,9 +718,9 @@ void drawWeatherStrip()
         int xBegin = marginLeft + cellWidth * (day % COLUMNS) + padLeft;
         int yBegin = marginUp + headerCalendarName + headerDay + (day / COLUMNS) * cellHeight + padUp;
         drawWeatherIcon(xBegin, yBegin + 5, day);
-        int xEndWeatherLabel = drawWeatherLabel(xBegin, yBegin + headerWeather - 7, day);
+        int yWeatherLabel = yBegin + headerWeather - 4;
+        int xEndWeatherLabel = drawWeatherLabel(xBegin, yWeatherLabel, day);
         drawWeatherTemp(xBegin + icon_height + 30, yBegin + 40, day);
-        //drawWeatherPredictability(xBegin + icon_height + 80, yBegin + headerWeather - 7, day);
         // If the weather icon is with rain, print the rain probability
         if (strcmp(abbr_days[day], "h") == 0 ||
             strcmp(abbr_days[day], "10d") == 0 ||
@@ -728,7 +728,7 @@ void drawWeatherStrip()
             strcmp(abbr_days[day], "09d") == 0 ||
             strcmp(abbr_days[day], "13d") == 0) // Snow
         {
-            drawWeatherPredictability(xEndWeatherLabel + 25, yBegin + headerWeather - 7, day);
+            drawWeatherPredictability(xEndWeatherLabel + 25, yWeatherLabel, day);
         }
         // Moon
         uint8_t index_moon = (uint8_t)round(moon_phase[day] * sizeof(moon_phases_1bit) / sizeof(moon_phases_1bit[0]));

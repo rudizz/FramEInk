@@ -197,7 +197,7 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
             // Cerco il parametro Until
             char* until = strstr(timeEnd, "UNTIL=") + 6;
             char* dtStamp = strstr(timeEnd, "DTSTAMP:") + 8;
-            if (until < dtStamp) // Se è vero, vuol dire che esiste il campo Until
+            if (until > beginEvt && until < dtStamp) // Se è vero, vuol dire che esiste il campo Until
             {
                 // Limito il campo Until all'ultimo giorno visualizzato nel calendario.
                 epochUntil = min<time_t>(getEpoch(until), epochUntil);
