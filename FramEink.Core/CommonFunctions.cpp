@@ -248,8 +248,8 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
                     (epochTo >= epochFirstDayShown && epochTo <= epochUntil) ||
                     (epochFrom < epochFirstDayShown && epochTo > epochUntil))
                 {
-                    Serial.printf("epochFrom: %d, epochTo: %d, fRep: %d, lastDay: %d, iDay: %d, evtLastNDays: %d\n",
-                        epochFrom, epochTo, giorniFrequenzaRipetizione, epochLastDayShown, iDay, evtLastNDays);
+                    Serial.printf("epochFrom: %d, epochTo: %d, epochUntil: %d, fRep: %d, lastDay: %d, iDay: %d, evtLastNDays: %d\n",
+                        epochFrom, epochTo, epochUntil, giorniFrequenzaRipetizione, epochLastDayShown, iDay, evtLastNDays);
                     // -- Giorni di Esclusione --
                     bool excludeDate = false;
                     char* exdate = strstr(timeEnd, "EXDATE") + 6;
@@ -276,7 +276,7 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
                             exdate = strstr(exdate, "EXDATE") + 6;
                         } while (!excludeDate && exdate < dtStamp && exdate > beginEvt);
                     }
-                    if (!excludeDate && epochFrom > epochFirstDayShown && entriesNum < EventClass::MAX_CALENDAR_EVENTS)
+                    if (!excludeDate && epochFrom >= epochFirstDayShown && entriesNum < EventClass::MAX_CALENDAR_EVENTS)
                     {
                         addEventToEntry(&entries[entriesNum], epochFirstDayShown,
                             epochFrom, epochTo, String(timeStart + 8, 1) != "T", summary, location, beginEvt, endEvt);
