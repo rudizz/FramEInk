@@ -171,6 +171,9 @@
     <ClInclude Include="binary_Icons\termometro.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="binary_Icons\sunset.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="binary_Icons\icons\c.png">

@@ -57,4 +57,6 @@
 
 #include "binary_Icons/termometro.h"
 
+#include "binary_Icons/sunset.h"
+
 #endif

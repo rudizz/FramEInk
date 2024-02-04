@@ -233,7 +233,9 @@ void setup()
             predictability[0], predictability[1], predictability[2], predictability[3], predictability[4], predictability[5],
             currentWind, currentTime, nameWeather[0], nameWeather[1], nameWeather[2], nameWeather[3], nameWeather[4], nameWeather[5],
             abbr_days[0], abbr_days[1], abbr_days[2], abbr_days[3], abbr_days[4], abbr_days[5],
-            &moon_phase[0], &moon_phase[1], &moon_phase[2], &moon_phase[3], &moon_phase[4], &moon_phase[5]);
+            &moon_phase[0], &moon_phase[1], &moon_phase[2], &moon_phase[3], &moon_phase[4], &moon_phase[5],
+            sunrise_time[0], sunrise_time[1], sunrise_time[2], sunrise_time[3], sunrise_time[4], sunrise_time[5], 
+            sunset_time[0], sunset_time[1], sunset_time[2], sunset_time[3], sunset_time[4], sunset_time[5]);
 
         // ---  CALENDAR  ---
         if (calendarURL != "") {
@@ -684,18 +686,40 @@ void drawWeatherTemp(int x, int y, int day)
 {
     // Temp Max
     display.setFont(&FreeSans18pt7b);
-    display.setCursor(x, y);
+    display.setCursor(x, y + 2);
     display.print(temps_max[day]);
     display.setFont(&FreeSans12pt7b);
     //display.println("° C");
     // Temp Min
     display.setFont(&FreeSans18pt7b);
-    display.setCursor(x, y + 40);
+    display.setCursor(x, y + 38);
     display.print(temps_min[day]);
     display.setFont(&FreeSans12pt7b);
     //display.println(F("° C"));
-    
-    display.drawBitmap3Bit(x + 50, y - 28, termometro, termometro_w, termometro_h);
+
+    int16_t x1, y1;
+    uint16_t wMax, wMin, h;
+    display.getTextBounds(temps_max[day], 0, 0, &x1, &y1, &wMax, &h);
+    display.getTextBounds(temps_min[day], 0, 0, &x1, &y1, &wMin, &h);
+    display.drawBitmap3Bit(x + max(wMax, wMin)*2, y - 28, termometro, termometro_w, termometro_h);
+}
+// SUNSET - SUNRISE
+void drawSunriseSunsetTime(int x, int y, int day)
+{
+    // Sunrise
+    display.setFont(&FreeSans12pt7b);
+    display.setCursor(x, y + icon_sunset_h + 20);
+    display.print(sunrise_time[day]);
+    // Sunset
+    display.setFont(&FreeSans12pt7b);
+    display.setCursor(x, y + icon_sunset_h + 40);
+    display.print(sunset_time[day]);
+    int16_t x1, y1;
+    uint16_t w, h;
+    display.getTextBounds(sunset_time[day], 0, 0, &x1, &y1, &w, &h); //calc width of new string
+
+    int offsetXIcon = 0.5 * (w - icon_sunset_w);
+    display.drawBitmap(x + offsetXIcon, y, icon_sunset, icon_sunset_w, icon_sunset_h, 7, 0);
 }
 // PREDICTABILITY
 void drawWeatherPredictability(int x, int y, int day)
@@ -720,7 +744,9 @@ void drawWeatherStrip()
         drawWeatherIcon(xBegin, yBegin + 5, day);
         int yWeatherLabel = yBegin + headerWeather - 4;
         int xEndWeatherLabel = drawWeatherLabel(xBegin, yWeatherLabel, day);
-        drawWeatherTemp(xBegin + icon_height + 30, yBegin + 40, day);
+        drawWeatherTemp(xBegin + icon_height + 10, yBegin + 40, day);
+        drawSunriseSunsetTime(xBegin + icon_height + 100, yBegin + 10, day);
+
         // If the weather icon is with rain, print the rain probability
         if (strcmp(abbr_days[day], "h") == 0 ||
             strcmp(abbr_days[day], "10d") == 0 ||

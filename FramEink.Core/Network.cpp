@@ -196,13 +196,26 @@ void formatWind(char *str, float wind)
     dtostrf(wind, 2, 0, str);
 }
 
+void formatSunrise(char *str, time_t epochSunrise)
+{
+    tm tm_sunrise;
+    gmtime_r(&epochSunrise, &tm_sunrise);
+    
+    // Built in function for float to char* conversion
+    dtostrf(tm_sunrise.tm_hour, 2, 0, str);
+    strcpy(str + 2, ":");
+    dtostrf(tm_sunrise.tm_min, 2, 0, str + 3);
+}
+
 void Network::getDataFromOpenWeather(int *timezone_offset, char *temp_min0, char *temp_min1, char *temp_min2, char *temp_min3, char *temp_min4, char *temp_min5, char *currentTemp,
                       char *temp_max0, char *temp_max1, char *temp_max2, char *temp_max3, char *temp_max4, char *temp_max5,
                       char *predictability0, char *predictability1, char *predictability2, char *predictability3, char *predictability4, char *predictability5,
                       char *currentWind, char *currentTime, char *currentWeather0, char *currentWeather1,
                       char *currentWeather2, char *currentWeather3, char *currentWeather4, char *currentWeather5,
                       char *abbr0, char *abbr1, char *abbr2, char *abbr3, char *abbr4, char *abbr5,
-                      float *moon_phase0, float *moon_phase1, float *moon_phase2, float *moon_phase3, float *moon_phase4, float *moon_phase5)
+                      float *moon_phase0, float *moon_phase1, float *moon_phase2, float *moon_phase3, float *moon_phase4, float *moon_phase5,
+                      char* sunrise0, char* sunrise1, char* sunrise2, char* sunrise3, char* sunrise4, char* sunrise5,
+                      char* sunset0, char* sunset1, char* sunset2, char* sunset3, char* sunset4, char* sunset5)
 {
     // If not connected to wifi reconnect wifi
     if (WiFi.status() != WL_CONNECTED)
@@ -317,6 +330,21 @@ void Network::getDataFromOpenWeather(int *timezone_offset, char *temp_min0, char
                 *moon_phase3 = doc["daily"][3][F("moon_phase")].as<float>();
                 *moon_phase4 = doc["daily"][4][F("moon_phase")].as<float>();
                 *moon_phase5 = doc["daily"][5][F("moon_phase")].as<float>();
+                // Sunrise
+                formatSunrise(sunrise0, doc["daily"][0][F("sunrise")].as<time_t>());
+                formatSunrise(sunrise1, doc["daily"][1][F("sunrise")].as<time_t>());
+                formatSunrise(sunrise2, doc["daily"][2][F("sunrise")].as<time_t>());
+                formatSunrise(sunrise3, doc["daily"][3][F("sunrise")].as<time_t>());
+                formatSunrise(sunrise4, doc["daily"][4][F("sunrise")].as<time_t>());
+                formatSunrise(sunrise5, doc["daily"][5][F("sunrise")].as<time_t>());
+                // Sunset
+                formatSunrise(sunset0, doc["daily"][0][F("sunset")].as<time_t>());
+                formatSunrise(sunset1, doc["daily"][1][F("sunset")].as<time_t>());
+                formatSunrise(sunset2, doc["daily"][2][F("sunset")].as<time_t>());
+                formatSunrise(sunset3, doc["daily"][3][F("sunset")].as<time_t>());
+                formatSunrise(sunset4, doc["daily"][4][F("sunset")].as<time_t>());
+                formatSunrise(sunset5, doc["daily"][5][F("sunset")].as<time_t>());
+
             }
         }
     }

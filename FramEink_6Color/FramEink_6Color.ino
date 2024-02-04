@@ -241,7 +241,9 @@ void setup()
             predictability[0], predictability[1], predictability[2], predictability[3], predictability[4], predictability[5],
             currentWind, currentTime, nameWeather[0], nameWeather[1], nameWeather[2], nameWeather[3], nameWeather[4], nameWeather[5],
             abbr_days[0], abbr_days[1], abbr_days[2], abbr_days[3], abbr_days[4], abbr_days[5],
-            &moon_phase[0], &moon_phase[1], &moon_phase[2], &moon_phase[3], &moon_phase[4], &moon_phase[5]);
+            &moon_phase[0], &moon_phase[1], &moon_phase[2], &moon_phase[3], &moon_phase[4], &moon_phase[5],
+            sunrise_time[0], sunrise_time[1], sunrise_time[2], sunrise_time[3], sunrise_time[4], sunrise_time[5],
+            sunset_time[0], sunset_time[1], sunset_time[2], sunset_time[3], sunset_time[4], sunset_time[5]);
 
         // ---  CALENDAR  ---
         if (calendarURL != "") {

@@ -48,6 +48,22 @@ static char predictability[8][6] = {
     "0F",
     "0F",
 };
+static char sunrise_time[8][6] = {
+    "00:00",
+    "00:00",
+    "00:00",
+    "00:00",
+    "00:00",
+    "00:00"
+};
+static char sunset_time[8][6] = {
+    "00:00",
+    "00:00",
+    "00:00",
+    "00:00",
+    "00:00",
+    "00:00"
+};
 //// Variables for storing days of the week
 //static char days[8][4] = {
 //    "",
