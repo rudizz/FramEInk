@@ -196,6 +196,17 @@ void formatWind(char *str, float wind)
     dtostrf(wind, 2, 0, str);
 }
 
+void padZeros(char* charStr) //this doesn't handle negative numbers
+{
+    for (int i = 0; i < strlen(charStr); i++)
+    {
+        if (charStr[i] == ' ')
+            charStr[i] = '0';
+        else
+            break;
+    }
+}
+
 void formatSunrise(char *str, time_t epochSunrise)
 {
     tm tm_sunrise;
@@ -205,6 +216,7 @@ void formatSunrise(char *str, time_t epochSunrise)
     dtostrf(tm_sunrise.tm_hour, 2, 0, str);
     strcpy(str + 2, ":");
     dtostrf(tm_sunrise.tm_min, 2, 0, str + 3);
+    padZeros(str + 3);
 }
 
 void Network::getDataFromOpenWeather(int *timezone_offset, char *temp_min0, char *temp_min1, char *temp_min2, char *temp_min3, char *temp_min4, char *temp_min5, char *currentTemp,
