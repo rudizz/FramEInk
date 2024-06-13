@@ -6,7 +6,7 @@
 			All non-arduino files created by visual micro and all visual studio project or solution files can be freely deleted and are not required to compile a sketch (do not delete your own code!).
 			Note: debugger breakpoints are stored in '.sln' or '.asln' files, knowledge of last uploaded breakpoints is stored in the upload.vmps.xml file. Both files are required to continue a previous debug session without needing to compile and upload again
 	
-	Hardware: e-radionica.com Inkplate10(Inkplate_Boards_Inkplate10), Platform=esp32, Package=Inkplate_Boards
+	Hardware: Soldered Inkplate 6COLOR (Inkplate_Boards_Inkplate6COLOR), Platform=esp32, Package=Inkplate_Boards
 */
 
 #if defined(_VMICRO_INTELLISENSE)
@@ -15,7 +15,6 @@
 #define _VSARDUINO_H_
 #define __ESP32_esp32__ 1
 #define __ESP32_ESP32__ 1
-#define _VMDEBUG 1
 #define HAVE_CONFIG_H 1
 #define MBEDTLS_CONFIG_FILE "mbedtls/esp_config.h"
 #define UNITY_INCLUDE_CONFIG_H 1
@@ -26,9 +25,9 @@
 #define _POSIX_READER_WRITER_LOCKS 1
 #define F_CPU 240000000L
 #define ARDUINO 108010
-#define ARDUINO_INKPLATE10 1
+#define ARDUINO_INKPLATECOLOR 1
 #define ARDUINO_ARCH_ESP32 1
-#define ARDUINO_BOARD "INKPLATE10"
+#define ARDUINO_BOARD "INKPLATECOLOR"
 #define ARDUINO_VARIANT "Inkplate"
 #define ARDUINO_PARTITION_huge_app 1
 #define ESP32 1

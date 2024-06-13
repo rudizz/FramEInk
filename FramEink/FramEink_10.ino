@@ -57,6 +57,8 @@
 #include <algorithm>
 #include <ctime>
 
+const bool DEBUG = false;
+
 // WiFi Credentials ---------------
 String ssid;
 String pass;
@@ -149,8 +151,12 @@ void drawWeatherStrip();
 
 void setup()
 {
-    Serial.begin(115200);
-    Serial.println("Inizializzo...");
+    time_t nowAwakeEpoch = network.getNowEpoch(false);
+    if (DEBUG)
+    {
+        Serial.begin(115200);
+        Serial.println("Inizializzo...");
+    }
 
     // calcolo le variabili iniziali in base all'orientamento
     if (ROTATION == 0 | ROTATION == 2)
@@ -188,7 +194,6 @@ void setup()
         wiFiAPSettings->loop(); // esco dopo 10 minuti
         settingsOK = true;
     }
-    Serial.println("Set eeprom readed data");
     ssid = wiFiAPSettings->SSID_User;
     pass = wiFiAPSettings->PWD_User;
     network.latitude = atoff(wiFiAPSettings->Latitude_User.c_str());
@@ -196,7 +201,6 @@ void setup()
     calendarURL = wiFiAPSettings->ICALID_User;
 
     display.setTextColor(0, 7);
-    Serial.println("new SDPhotoClass");
 
     sdPhoto = new SDPhotoClass(&display);
 
@@ -220,10 +224,12 @@ void setup()
     }
     else {
 
-        Serial.println("network.begin");
+        if (DEBUG)
+            Serial.println("network.begin");
         network.begin(); // stampo su seriale la data e ora attuale
         // Controllo che siano passati almeno 15 minuti dall'ultimo risveglio
-        Serial.printf("last awake: %d\n", checkLastAwake(15ll, network.getNowEpoch()));
+        if (DEBUG)
+            Serial.printf("last awake: %d\n", checkLastAwake(15ll, network.getNowEpoch(true)));
         
         // ---  WEATHER  ---
         //network.getDaysLabel(days[0], days[1], days[2], days[3]);
@@ -242,7 +248,8 @@ void setup()
             // Keep trying to get data if it fails the first time
             while (!network.getDataCalendar(dataCalendar))
             {
-                Serial.println("Failed getting data, retrying");
+                if (DEBUG)
+                    Serial.println("Failed getting data, retrying");
                 delay(1000);
             }
         }
@@ -252,12 +259,12 @@ void setup()
         display.clearDisplay();
 
         drawBattery();
-        drawGrid();
         if (calendarURL != "") {
             drawCalendarData();
             drawInfo();
 
         }
+        drawGrid();
         drawTime();
 
         drawWeatherStrip();
@@ -277,7 +284,8 @@ void setup()
     // Can't do partial due to deepsleep
     display.display();
 
-    Serial.printf("counterPortrait: %d, counterLandscape: %d\n", counterPortrait, counterLandscape);
+    if (DEBUG)
+        Serial.printf("counterPortrait: %d, counterLandscape: %d\n", counterPortrait, counterLandscape);
 
     // Se si sveglia tra le 23:00 e l' 1:59, imposto a 6 ore il tempo di sleep
     int timeHour;
@@ -286,9 +294,19 @@ void setup()
     {
         time_sleeping = 360ll; // 6h sleep
     }
-    Serial.print("Sleep time [us]: ");
-    Serial.println(time_sleeping * MIN_2_MICROSEC);
-    esp_sleep_enable_timer_wakeup(time_sleeping * MIN_2_MICROSEC);
+    if (DEBUG)
+        Serial.printf("Sleep time [us]: ", time_sleeping * MIN_2_MICROSEC);
+
+    // Valuto il tempo di computazione per fare in modo che si svegli sempre ogni ora
+    long long computationTime = 0;
+    //Serial.printf("Start: %d , End: %d\n", nowAwakeEpoch, network.getNowEpoch(false));
+    if (nowAwakeEpoch > 0)
+    {
+        computationTime = (long long)(network.getNowEpoch(false) - nowAwakeEpoch) * SEC_2_MICROSEC;
+    }
+    //Serial.printf("Computation Time: %d\n", computationTime / SEC_2_MICROSEC);
+
+    esp_sleep_enable_timer_wakeup(time_sleeping * MIN_2_MICROSEC - computationTime);
     (void)esp_deep_sleep_start();
 }
 
@@ -572,7 +590,7 @@ void drawCalendarData()
 
     // Creo le epoch della finestra di inizio e fine giorni da visualizzare.
     // Finestra è dalle 00:00 del primo giorno alle 23:59 dell'ultimo giorno.
-    time_t epochFirstDayShown = resetEpochOf(network.getNowEpoch(), 
+    time_t epochFirstDayShown = resetEpochOf(network.getNowEpoch(true), 
                                              false,
                                              false,
                                              false,
@@ -585,7 +603,8 @@ void drawCalendarData()
 
     // Sort entries by time
     qsort(entries, entriesNum, sizeof(EventClass), cmpEvents);
-    Serial.printf("Eventi nel calendario: %d\n", entriesNum);
+    if (DEBUG)
+        Serial.printf("Eventi nel calendario: %d\n", entriesNum);
     
     // Events displayed and overflown counters
     int columns[COLUMNS * ROWS] = { 0 };
@@ -609,13 +628,15 @@ void drawCalendarData()
         bool s = drawEvent(&entries[i], entries[i].day, columns[entries[i].day] + (entries[i].day / COLUMNS) * cellHeight + marginUp + headerCalendarName + headerDay + headerWeather + padUp,
             (entries[i].day / COLUMNS) * cellHeight + marginUp + headerCalendarName + cellHeight, &shift);
 
-        Serial.println(shift);
+        if (DEBUG)
+            Serial.println(shift);
         columns[entries[i].day] += shift + padDown;
 
         // If it overflowed, set column to clogged and add one event as not shown
         if (!s)
         {
-            Serial.println("Clogged event");
+            if (DEBUG)
+                Serial.println("Clogged event");
             //            ++cloggedCount[entries[i].day];
             clogged[entries[i].day] = 1;
         }
@@ -758,8 +779,8 @@ void drawWeatherStrip()
         }
         // Moon
         uint8_t index_moon = (uint8_t)round(moon_phase[day] * sizeof(moon_phases_1bit) / sizeof(moon_phases_1bit[0]));
-        Serial.print("index moon: ");
-        Serial.println(index_moon);
+        if (DEBUG)
+            Serial.printf("index moon: %d\n", index_moon);
         display.drawBitmap(xBegin + cellWidth - moon_phase_icon_size - padLeft - 15,
             yBegin + headerWeather - moon_phase_icon_size,
             moon_phases_1bit[index_moon],

@@ -46,5 +46,6 @@
 #include "binary_Icons/celsius_70.h"
 #include "binary_Icons/termometro.h"
 #include "binary_Icons/yellow_white.h"
+#include "binary_Icons/sunset.h"
 
 #endif

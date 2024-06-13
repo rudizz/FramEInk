@@ -17,7 +17,7 @@ time_t checkLastAwake(long long minutes, time_t nowEpoch)
     time_t diffLastAwake = nowEpoch - last_awake;
     if (nowEpoch - last_awake < minutes * 60l)
     {
-        Serial.println("Last awake too soon. Let's sleep again.");
+        Serial.printf("Last awake %d too soon.Let's sleep again for %d minutes.\n", last_awake, minutes);
         esp_sleep_enable_timer_wakeup(minutes * MIN_2_MICROSEC);
         (void)esp_deep_sleep_start();
     }

@@ -12,6 +12,8 @@
 #define MIN_2_MICROSEC 60000000ll
 // Convert Days to Seconds
 #define DAYS_2_SEC 24 * 3600ll
+// Convert Seconds to Microseconds
+#define SEC_2_MICROSEC 1000000ll
 
 // alloco 2Mb su RAM extra del ESP32, usati per scaricare l'intero calendario
 #define SIZE_CALENDAR_DATA 2000000L

@@ -58,7 +58,7 @@ void Network::begin()
 void Network::getTime(char *timeStr, long offSet)
 {
     // Get seconds since 1.1.1970.
-    time_t nowSecs = getNowEpoch() + offSet;
+    time_t nowSecs = getNowEpoch(true) + offSet;
 
     // Used to store time
     struct tm timeinfo;
@@ -69,20 +69,21 @@ void Network::getTime(char *timeStr, long offSet)
 }
 
 // Gets time from ntp server
-time_t Network::getNowEpoch()
+time_t Network::getNowEpoch(bool withTimezone)
 {
     //return 1677327149; // 25 feb 2023
     //return 1712917792;
-    
+    if (withTimezone)
+        return time(nullptr) + (long)timeZone;
     // Get seconds since 1.1.1970.
-    return time(nullptr) + (long)timeZone;
+    return time(nullptr);
 }
 
 // Gets time struct from ntp server
 void Network::getTimeHour(int *timeHour, long offSet)
 {
     // Get seconds since 1.1.1970.
-    time_t nowSecs = getNowEpoch() + offSet;
+    time_t nowSecs = getNowEpoch(true) + offSet;
 
     // Used to store time
     struct tm timeinfo;
