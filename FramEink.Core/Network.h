@@ -21,6 +21,7 @@ Distributed as-is; no warranty is given.
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <ctime>
+#include <ArduinoJson.h>
 
 // To get timeZone from main file
 extern int timeZone;

@@ -31,10 +31,21 @@
 
 // Next 3 lines are a precaution, you can ignore those, and the example would also work without them
 #ifndef ARDUINO_INKPLATECOLOR
-#error "Wrong board s-election for this example, please select Inkplate 10 in the boards menu."
+#error "Wrong board s-election for this example, please select Inkplate 6 Color in the boards menu."
 #endif
 
 // Include Inkplate library to the sketch
+#include <WiFi.h>
+#include <WiFiAP.h>
+#include <WiFiClient.h>
+#include <WiFiGeneric.h>
+#include <WiFiMulti.h>
+#include <WiFiScan.h>
+#include <WiFiServer.h>
+#include <WiFiSTA.h>
+#include <WiFiType.h>
+#include <WiFiUdp.h>
+#include <ArduinoJson.hpp>
 #include "Inkplate.h"
 #include "SDPhoto.h"
 #include "EventClass.h"

@@ -6,7 +6,7 @@
 			All non-arduino files created by visual micro and all visual studio project or solution files can be freely deleted and are not required to compile a sketch (do not delete your own code!).
 			Note: debugger breakpoints are stored in '.sln' or '.asln' files, knowledge of last uploaded breakpoints is stored in the upload.vmps.xml file. Both files are required to continue a previous debug session without needing to compile and upload again
 	
-	Hardware: Inkplate 10 (ESP32)                                                                                                                               (Inkplate_Boards_Inkplate10), Platform=esp32, Package=Inkplate_Boards
+	Hardware: e-radionica.com Inkplate10(Inkplate_Boards_Inkplate10), Platform=esp32, Package=Inkplate_Boards
 */
 
 #if defined(_VMICRO_INTELLISENSE)
@@ -15,12 +15,13 @@
 #define _VSARDUINO_H_
 #define __ESP32_esp32__ 1
 #define __ESP32_ESP32__ 1
+#define _VMDEBUG 1
 #define HAVE_CONFIG_H 1
 #define MBEDTLS_CONFIG_FILE "mbedtls/esp_config.h"
 #define UNITY_INCLUDE_CONFIG_H 1
 #define WITH_POSIX 1
 #define _GNU_SOURCE 1
-#define IDF_VER "v4.4-beta1-189-ga79dc75f0a"
+#define IDF_VER "v4.4.6-dirty"
 #define ESP_PLATFORM 1
 #define _POSIX_READER_WRITER_LOCKS 1
 #define F_CPU 240000000L
@@ -57,7 +58,7 @@
 //#define _STD_BEGIN
 //#define EMIT
 #define WARNING
-#define _Lockit
+//#define _Lockit
 #define __CLR_OR_THIS_CALL
 #define C4005
 //#define _NEW
@@ -86,10 +87,12 @@ typedef int __gnuc_va_list;
 typedef unsigned char byte;
 extern "C" void __cxa_pure_virtual() {;}
 
-typedef long __INTPTR_TYPE__ ;
+//typedef long __INTPTR_TYPE__ ;
+#define __INTPTR_TYPE__ unsigned int
 typedef long __UINTPTR_TYPE__ ;
 //typedef long __SIZE_TYPE__ 	;
 #define __SIZE_TYPE__ unsigned int
+#define __INT32_TYPE__ long
 typedef long __PTRDIFF_TYPE__;
 
 typedef long pthread_t;
@@ -104,6 +107,14 @@ typedef long pthread_cond_t;
 // Ensure ArduinoJSON Lib Intellisense works correctly
 #define ARDUINOJSON_ENABLE_STD_STREAM 0
 
+class VM_DBG {
+public:
+	// Send a Message to the Serial Monitor via WiFi Connection 
+	void sendUserMessage(const char* theMessage) {};
+} MicroDebug;
+
+class Lockit { public: int _Lockit() {} };
+
 #include <arduino.h>
 #include <pins_arduino.h> 
 
@@ -116,6 +127,6 @@ typedef long pthread_cond_t;
 #define READ_PERI_REG(addr)
 // Write Value to Register
 #define WRITE_PERI_REG(addr,val)
-#include "FramEink_10.ino"
+#include "..\FramEink_10.ino"
 #endif
 #endif

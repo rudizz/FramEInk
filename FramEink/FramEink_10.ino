@@ -57,7 +57,6 @@
 #include <algorithm>
 #include <ctime>
 
-
 // WiFi Credentials ---------------
 String ssid;
 String pass;
@@ -211,7 +210,7 @@ void setup()
     //Serial.println(sdPhoto->initOk);
     //Serial.printf("display sd init: %d\n", display.sdCardInit());
 
-
+    //stateCalendar = false; // debug
     if (!stateCalendar)
     {
         // Photo
@@ -444,7 +443,8 @@ bool drawEvent(EventClass* event, int day, int beginY, int maxHeigth, int* heigt
     // Insert line brakes into setTextColor
     int lastSpace = -100;
     display.setCursor(xStartTitle, beginY + 43); // offset tra la linea alta della griglia e l'inizio del testo
-    for (int i = 0; i < min(EventClass::MAX_N_CHAR_TITLE_CALENDAR, (int)strlen(event->name)); ++i)
+    //for (int i = 0; i < min(EventClass::MAX_N_CHAR_TITLE_CALENDAR, (int)strlen(event->name)); ++i)
+    for (int i = 0; i < min(65, (int)strlen(event->name)); ++i)
     {
         // Se il primo carattere è uno spazio, lo salto
         if (n == 0 && event->name[i] == ' ')
@@ -632,7 +632,7 @@ void drawCalendarData()
             display.fillRoundRect(5 + xBegin, yBegin, cellWidth - 10, 20, 10, 6);
             display.setCursor(15 + xBegin, yBegin + 15);
             //            display.setTextColor(7, 0);
-            display.setTextColor(BLACK, WHITE);
+            display.setTextColor(7, WHITE);
             display.setFont(&FreeSans9pt7b);
             display.print(cloggedCount[i]);
             display.print(" more event");

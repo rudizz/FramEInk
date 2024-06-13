@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="FramEink_10.ino" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="__vm\.FramEink.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -206,5 +203,8 @@
     <Image Include="binary_Icons\icons\t.png">
       <Filter>Resource Files</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="FramEink_10.ino" />
   </ItemGroup>
 </Project>

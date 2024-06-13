@@ -16,9 +16,6 @@ Distributed as-is; no warranty is given.
 
 #include "Network.h"
 
-
-#include <ArduinoJson.h>
-
 // Static Json from ArduinoJson library
 StaticJsonDocument<6000> doc;
 
@@ -75,7 +72,7 @@ void Network::getTime(char *timeStr, long offSet)
 time_t Network::getNowEpoch()
 {
     //return 1677327149; // 25 feb 2023
-    //return 1676722349; // 18 feb 2023
+    //return 1712917792;
     
     // Get seconds since 1.1.1970.
     return time(nullptr) + (long)timeZone;
@@ -343,19 +340,19 @@ void Network::getDataFromOpenWeather(int *timezone_offset, char *temp_min0, char
                 *moon_phase4 = doc["daily"][4][F("moon_phase")].as<float>();
                 *moon_phase5 = doc["daily"][5][F("moon_phase")].as<float>();
                 // Sunrise
-                formatSunrise(sunrise0, doc["daily"][0][F("sunrise")].as<time_t>());
-                formatSunrise(sunrise1, doc["daily"][1][F("sunrise")].as<time_t>());
-                formatSunrise(sunrise2, doc["daily"][2][F("sunrise")].as<time_t>());
-                formatSunrise(sunrise3, doc["daily"][3][F("sunrise")].as<time_t>());
-                formatSunrise(sunrise4, doc["daily"][4][F("sunrise")].as<time_t>());
-                formatSunrise(sunrise5, doc["daily"][5][F("sunrise")].as<time_t>());
+                formatSunrise(sunrise0, doc["daily"][0][F("sunrise")].as<time_t>() + *timezone_offset);
+                formatSunrise(sunrise1, doc["daily"][1][F("sunrise")].as<time_t>() + *timezone_offset);
+                formatSunrise(sunrise2, doc["daily"][2][F("sunrise")].as<time_t>() + *timezone_offset);
+                formatSunrise(sunrise3, doc["daily"][3][F("sunrise")].as<time_t>() + *timezone_offset);
+                formatSunrise(sunrise4, doc["daily"][4][F("sunrise")].as<time_t>() + *timezone_offset);
+                formatSunrise(sunrise5, doc["daily"][5][F("sunrise")].as<time_t>() + *timezone_offset);
                 // Sunset
-                formatSunrise(sunset0, doc["daily"][0][F("sunset")].as<time_t>());
-                formatSunrise(sunset1, doc["daily"][1][F("sunset")].as<time_t>());
-                formatSunrise(sunset2, doc["daily"][2][F("sunset")].as<time_t>());
-                formatSunrise(sunset3, doc["daily"][3][F("sunset")].as<time_t>());
-                formatSunrise(sunset4, doc["daily"][4][F("sunset")].as<time_t>());
-                formatSunrise(sunset5, doc["daily"][5][F("sunset")].as<time_t>());
+                formatSunrise(sunset0, doc["daily"][0][F("sunset")].as<time_t>() + *timezone_offset);
+                formatSunrise(sunset1, doc["daily"][1][F("sunset")].as<time_t>() + *timezone_offset);
+                formatSunrise(sunset2, doc["daily"][2][F("sunset")].as<time_t>() + *timezone_offset);
+                formatSunrise(sunset3, doc["daily"][3][F("sunset")].as<time_t>() + *timezone_offset);
+                formatSunrise(sunset4, doc["daily"][4][F("sunset")].as<time_t>() + *timezone_offset);
+                formatSunrise(sunset5, doc["daily"][5][F("sunset")].as<time_t>() + *timezone_offset);
 
             }
         }

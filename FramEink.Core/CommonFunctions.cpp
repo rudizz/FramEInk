@@ -128,7 +128,18 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
 
 
         char* timeEnd = strstr(beginEvt, "DTEND") + 5;
-        timeEnd = strstr(timeEnd, ":") + 1;
+        // Verifico se è presente il DTEND
+        if (timeEnd < strstr(beginEvt, "DTSTAMP"))
+        {
+            // Se è presente cerco il suo valore
+            timeEnd = strstr(timeEnd, ":") + 1;
+        }
+        else
+        {
+            // Altrimenti lo assegno uguale al timeStart
+            timeEnd = timeStart;
+            Serial.printf("\n== Manca DTEND, assegno epochTo = epochFrom ==\n");
+        }
 
         // //Gestisco gli eventi ripetuti nel tempo. Per ora solo Daily e Weekly, Monthly e Yearly.
         char* rRule = strstr(beginEvt, "RRULE:") + 6;
@@ -164,6 +175,11 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
         // --------  Controllo se l'evento è da visualizzare  -----------
         time_t epochFrom = getEpoch(timeStart);
         time_t epochTo = getEpoch(timeEnd);
+        //if (epochFrom == epochTo)
+        //{
+        //    epochTo += 1;
+        //    Serial.printf("\nCopiato epochFrom: %d, epochTo: %d\n", epochFrom, epochTo);
+        //}
 
         if (epochTo < epochFrom)
         {
@@ -209,6 +225,13 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
         struct tm eventFrom, eventTo;
         gmtime_r(&epochFrom, &eventFrom);
         gmtime_r(&epochTo, &eventTo);
+        // Se l'evento finisce a mezzanotte, tolgo 1 secondo 
+        // in modo da non visualizzare l'evento nel giorno successivo
+        if (eventTo.tm_hour == 0 && eventTo.tm_min == 0)
+        {
+            epochTo -= 1;
+            gmtime_r(&epochTo, &eventTo);
+        }
         // Conto quanti giorni dura l'evento. Non lo conto con le epoch perché potrebbe durare
         // meno di 24 ore ma essere compreso su due giorni diversi.
         int evtLastNDays = eventTo.tm_yday - eventFrom.tm_yday;

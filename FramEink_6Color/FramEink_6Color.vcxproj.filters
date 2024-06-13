@@ -15,7 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="FramEink_6Color.ino" />
     <None Include="binary_Icons\icon_color\moon_phases\moon_phase_0_25_pattern.xcf" />
   </ItemGroup>
   <ItemGroup>
@@ -294,5 +293,8 @@
     <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_96.bmp">
       <Filter>Resource Files</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="FramEink_6Color.ino" />
   </ItemGroup>
 </Project>
