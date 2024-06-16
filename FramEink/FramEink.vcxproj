@@ -173,6 +173,8 @@
     <ClInclude Include="binary_Icons\moon_phases\moon_phase_0_96.h" />
     <ClInclude Include="binary_Icons\sunset.h" />
     <ClInclude Include="binary_Icons\termometro.h" />
+    <ClInclude Include="binary_Icons\drop.h" />
+    <ClInclude Include="fonts.h" />
     <ClInclude Include="icons_1bit.h" />
     <ClInclude Include="binary_Icons\light_gray.h" />
     <ClInclude Include="__vm\.FramEink.vsarduino.h" />

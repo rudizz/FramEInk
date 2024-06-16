@@ -26,7 +26,7 @@ static float moon_phase[6] = { 0, 0, 0, 0, 0, 0 };
 static char abbr_days[6][16];
 
 // Variables for storing temperature
-static char temps_min[8][6] = {
+static char temps_min[6][4] = {
     "0F",
     "0F",
     "0F",
@@ -34,7 +34,7 @@ static char temps_min[8][6] = {
     "0F",
     "0F",
 };
-static char temps_max[8][6] = {
+static char temps_max[6][4] = {
     "0F",
     "0F",
     "0F",
@@ -42,7 +42,7 @@ static char temps_max[8][6] = {
     "0F",
     "0F",
 };
-static char predictability[8][6] = {
+static char probabilityOfRain[6][5] = {
     "0F",
     "0F",
     "0F",
@@ -50,7 +50,15 @@ static char predictability[8][6] = {
     "0F",
     "0F",
 };
-static char sunrise_time[8][6] = {
+static char precipitation_mm[6][5] = {
+    "0F",
+    "0F",
+    "0F",
+    "0F",
+    "0F",
+    "0F",
+};
+static char sunrise_time[6][6] = {
     "00:00",
     "00:00",
     "00:00",
@@ -58,7 +66,7 @@ static char sunrise_time[8][6] = {
     "00:00",
     "00:00"
 };
-static char sunset_time[8][6] = {
+static char sunset_time[6][6] = {
     "00:00",
     "00:00",
     "00:00",

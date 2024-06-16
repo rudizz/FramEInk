@@ -180,12 +180,25 @@ bool Network::getDataCalendar(char *data)
 }
 
 // ====  WEATHER  =====
-
 void formatTemp(char *str, float temp)
 {
     // Built in function for float to char* conversion
-    temp = roundf(temp);
     dtostrf(temp, 2, 0, str);
+}
+
+void formatProbOfRain(char *str, float pop)
+{
+    // Built in function for float to char* conversion
+    dtostrf(pop, 3, 0, str);
+}
+
+void formatPrecipitationMM(char *str, float rain)
+{
+    // Built in function for float to char* conversion
+    if (rain < 10)
+        dtostrf(rain, 3, 1, str);
+    else
+        dtostrf(rain, 3, 0, str);
 }
 
 void formatWind(char *str, float wind)
@@ -219,7 +232,8 @@ void formatSunrise(char *str, time_t epochSunrise)
 
 void Network::getDataFromOpenWeather(int *timezone_offset, char *temp_min0, char *temp_min1, char *temp_min2, char *temp_min3, char *temp_min4, char *temp_min5, char *currentTemp,
                       char *temp_max0, char *temp_max1, char *temp_max2, char *temp_max3, char *temp_max4, char *temp_max5,
-                      char *predictability0, char *predictability1, char *predictability2, char *predictability3, char *predictability4, char *predictability5,
+                      char *probOfRain0, char *probOfRain1, char *probOfRain2, char *probOfRain3, char *probOfRain4, char *probOfRain5,
+                      char *precipitation_mm0, char * precipitation_mm1, char * precipitation_mm2, char * precipitation_mm3, char * precipitation_mm4, char * precipitation_mm5,
                       char *currentWind, char *currentTime, char *currentWeather0, char *currentWeather1,
                       char *currentWeather2, char *currentWeather3, char *currentWeather4, char *currentWeather5,
                       char *abbr0, char *abbr1, char *abbr2, char *abbr3, char *abbr4, char *abbr5,
@@ -326,13 +340,20 @@ void Network::getDataFromOpenWeather(int *timezone_offset, char *temp_min0, char
                 formatTemp(temp_max3, doc["daily"][3]["temp"][F("max")].as<float>());
                 formatTemp(temp_max4, doc["daily"][4]["temp"][F("max")].as<float>());
                 formatTemp(temp_max5, doc["daily"][5]["temp"][F("max")].as<float>());
-                // Predictability
-                formatTemp(predictability0, doc["daily"][0][F("pop")].as<float>() * 100);
-                formatTemp(predictability1, doc["daily"][1][F("pop")].as<float>() * 100);
-                formatTemp(predictability2, doc["daily"][2][F("pop")].as<float>() * 100);
-                formatTemp(predictability3, doc["daily"][3][F("pop")].as<float>() * 100);
-                formatTemp(predictability4, doc["daily"][4][F("pop")].as<float>() * 100);
-                formatTemp(predictability5, doc["daily"][5][F("pop")].as<float>() * 100);
+                // Probability of rain
+                formatProbOfRain(probOfRain0, doc["daily"][0][F("pop")].as<float>() * 100);
+                formatProbOfRain(probOfRain1, doc["daily"][1][F("pop")].as<float>() * 100);
+                formatProbOfRain(probOfRain2, doc["daily"][2][F("pop")].as<float>() * 100);
+                formatProbOfRain(probOfRain3, doc["daily"][3][F("pop")].as<float>() * 100);
+                formatProbOfRain(probOfRain4, doc["daily"][4][F("pop")].as<float>() * 100);
+                formatProbOfRain(probOfRain5, doc["daily"][5][F("pop")].as<float>() * 100);
+                // Rain volume
+                formatPrecipitationMM(precipitation_mm0, getRainSnowPrecipitationMM(strcmp(abbr0, "13d") == 0, 0));
+                formatPrecipitationMM(precipitation_mm1, getRainSnowPrecipitationMM(strcmp(abbr1, "13d") == 0, 1));
+                formatPrecipitationMM(precipitation_mm2, getRainSnowPrecipitationMM(strcmp(abbr2, "13d") == 0, 2));
+                formatPrecipitationMM(precipitation_mm3, getRainSnowPrecipitationMM(strcmp(abbr3, "13d") == 0, 3));
+                formatPrecipitationMM(precipitation_mm4, getRainSnowPrecipitationMM(strcmp(abbr4, "13d") == 0, 4));
+                formatPrecipitationMM(precipitation_mm5, getRainSnowPrecipitationMM(strcmp(abbr5, "13d") == 0, 5));
                 // Moon Phase
                 *moon_phase0 = doc["daily"][0][F("moon_phase")].as<float>();
                 *moon_phase1 = doc["daily"][1][F("moon_phase")].as<float>();
@@ -365,6 +386,14 @@ void Network::getDataFromOpenWeather(int *timezone_offset, char *temp_min0, char
 
     // Return to initial state
     WiFi.setSleep(sleep);
+}
+
+float Network::getRainSnowPrecipitationMM(bool isSnowing, int day)
+{
+    if (isSnowing)
+        return doc["daily"][day][F("snow")].as<float>();
+    else
+        return doc["daily"][day][F("rain")].as<float>();
 }
 
 void Network::setTime()

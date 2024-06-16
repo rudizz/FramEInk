@@ -1,5 +1,6 @@
 #ifndef ICONS_H
 #define ICONS_H
+// Image converter: https://solderedelectronics.github.io/Inkplate-image-converter/
 
 // WEATHER
 #include "binary_Icons/color_01d_clear.h"
@@ -47,5 +48,6 @@
 #include "binary_Icons/termometro.h"
 #include "binary_Icons/yellow_white.h"
 #include "binary_Icons/sunset.h"
+#include "binary_Icons/drop.h"
 
 #endif

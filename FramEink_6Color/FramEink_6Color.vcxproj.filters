@@ -165,6 +165,9 @@
     <ClInclude Include="binary_Icons\sunset.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="binary_Icons\drop.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="binary_Icons\icon_color\weather\autumn.bmp">
@@ -294,6 +297,12 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_96.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\sunset.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="binary_Icons\icon_color\water.png">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

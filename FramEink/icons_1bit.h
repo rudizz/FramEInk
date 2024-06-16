@@ -1,5 +1,6 @@
 #ifndef ICONS_H
 #define ICONS_H
+// Image converter: https://solderedelectronics.github.io/Inkplate-image-converter/
 
 #include "binary_Icons/icon_C.h"
 #include "binary_Icons/icon_H.h"
@@ -58,5 +59,7 @@
 #include "binary_Icons/termometro.h"
 
 #include "binary_Icons/sunset.h"
+
+#include "binary_Icons/drop.h"
 
 #endif

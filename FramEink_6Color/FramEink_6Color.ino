@@ -106,7 +106,7 @@ RTC_DATA_ATTR bool settingsOK = false; // viene messa a true dopo che vengono se
 
 // WEATHER  -----------------
 // City filled by query
-#define icon_height 88
+#define icon_weather_height color_01d_clear_h
 // height of the weather strip
 int headerWeather = 40; // qui verrà aggiunto icon_height
 const uint16_t colorDayTitle = INKPLATE_BLACK;
@@ -189,7 +189,7 @@ void setup()
     cellWidth = (WIDTH - marginLeft - marginRight) / COLUMNS;
     cellHeight = (HEIGHT - HEIGHT_PHOTO - headerCalendarName - marginUp - marginDown) / ROWS;
 
-    headerWeather += icon_height;
+    headerWeather += icon_weather_height;
 
     // Initial display settings
     display.begin();
@@ -197,8 +197,7 @@ void setup()
     display.setRotation(ROTATION);
     display.setTextWrap(false);
 
-    settingsOK = true; // debug
-    //delay(10000); // debug
+    //settingsOK = true; // debug
     wiFiAPSettings = new WiFiAPSettingsClass();
     if (!settingsOK)
     {
@@ -260,7 +259,8 @@ void setup()
         //network.getDaysLabel(days[0], days[1], days[2], days[3]);
         network.getDataFromOpenWeather(&timeZone, temps_min[0], temps_min[1], temps_min[2], temps_min[3], temps_min[4], temps_min[5], currentTemp,
             temps_max[0], temps_max[1], temps_max[2], temps_max[3], temps_max[4], temps_max[5],
-            predictability[0], predictability[1], predictability[2], predictability[3], predictability[4], predictability[5],
+            probabilityOfRain[0], probabilityOfRain[1], probabilityOfRain[2], probabilityOfRain[3], probabilityOfRain[4], probabilityOfRain[5],
+            precipitation_mm[0], precipitation_mm[1], precipitation_mm[2], precipitation_mm[3], precipitation_mm[4], precipitation_mm[5],
             currentWind, currentTime, nameWeather[0], nameWeather[1], nameWeather[2], nameWeather[3], nameWeather[4], nameWeather[5],
             abbr_days[0], abbr_days[1], abbr_days[2], abbr_days[3], abbr_days[4], abbr_days[5],
             &moon_phase[0], &moon_phase[1], &moon_phase[2], &moon_phase[3], &moon_phase[4], &moon_phase[5],
@@ -809,18 +809,32 @@ void drawSunriseSunsetTime(int x, int y, int day)
     int offsetYIcon = 0.5 * (2 * (h + separator) - icon_sunset_h);
     display.drawBitmap3Bit(x + 2, y - h * 1.2 + offsetYIcon, icon_sunset, icon_sunset_w, icon_sunset_h);
 }
-// PREDICTABILITY
-void drawWeatherPredictability(int x, int y, int day)
+// Probability of Rain
+void drawProbabilityOfRain(int x, int y, int day)
 {
-    // Predictability
-    display.setFont(&FreeSans16pt7b);
-    display.setTextColor(colorWeatherName);
-    //display.setCursor(x, y);
-    drawCentreString(predictability[day], x, y);
-    //display.print(predictability[day]);
-    display.setFont(&FreeSans9pt7b);
-    display.setCursor(display.getCursorX(), display.getCursorY()-2);
+    int separator = 7;
+    // Sunrise
+    display.setTextColor(colorWeatherTempMin);
+    display.setFont(&FreeSansBold9pt7b);
+    display.setCursor(x + icon_drop_w, y);
+    display.print(probabilityOfRain[day]);
+    display.setFont(&FreeSansBold7pt7b);
+    display.setCursor(display.getCursorX()+3, display.getCursorY()-1);
     display.print("%");
+    // Get string height
+    int16_t x1, y1;
+    uint16_t w, h;
+    display.getTextBounds(probabilityOfRain[day], 0, 0, &x1, &y1, &w, &h); //calc width of new string
+    // Sunset
+    display.setFont(&FreeSansBold9pt7b);
+    display.setCursor(x + icon_drop_w, y + h + separator);
+    display.print(precipitation_mm[day]);
+    display.setFont(&FreeSansBold7pt7b);
+    display.setCursor(display.getCursorX()+3, display.getCursorY()-1);
+    display.print("mm");
+
+    int offsetYIcon = 0.5 * (2 * (h + separator) - icon_drop_h);
+    display.drawBitmap3Bit(x, y - h * 1.3 + offsetYIcon, icon_drop, icon_drop_w, icon_drop_h);
 }
 
 void drawWeatherStrip()
@@ -834,20 +848,20 @@ void drawWeatherStrip()
         int yBegin = marginUp + headerCalendarName + headerDay + (day / COLUMNS) * cellHeight + padUp;
         drawWeatherIcon(xBegin, yBegin + 3, day);
         drawWeatherLabel(xBegin-8, yBegin + headerWeather - 5, day);
-        drawWeatherTemp(xBegin + icon_height + 20, yBegin + 36, day);
+        drawWeatherTemp(xBegin + icon_weather_height + 20, yBegin + 36, day);
         // If the weather icon is with rain, print the rain probability
         if (strcmp(abbr_days[day], "09d") == 0 ||
             strcmp(abbr_days[day], "10d") == 0 ||
             strcmp(abbr_days[day], "11d") == 0 ||
             strcmp(abbr_days[day], "13d") == 0) // Snow
         {
-            drawWeatherPredictability(xBegin + icon_height + 41, yBegin + headerWeather - 16, day);
+            drawProbabilityOfRain(xBegin + icon_weather_height + 6, yBegin + headerWeather - 22, day);
         }
         else if (!isSunriseShowed) 
         {
             // Mostro l'orario di Sunrise e Sunset solo una volta
             isSunriseShowed = true;
-            drawSunriseSunsetTime(xBegin + cellWidth - icon_sunset_w - 73, yBegin + headerWeather - icon_sunset_h / 2.0 - 3, day);
+            drawSunriseSunsetTime(xBegin + cellWidth - icon_sunset_w - 71, yBegin + headerWeather - icon_sunset_h / 2.0 - 3, day);
         }
         else
         {

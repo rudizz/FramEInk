@@ -171,6 +171,12 @@
     <ClInclude Include="binary_Icons\sunset.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="binary_Icons\drop.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="fonts.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="binary_Icons\icons\c.png">

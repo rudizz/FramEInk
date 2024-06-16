@@ -77,5 +77,13 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)WiFiAccessPoint\HTMLSettingsPage.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)CommonFunctions.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)EventClass.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSans5pt7b.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSans7pt7b.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSans10pt7b.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSansBold7pt7b.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSansBold5pt7b.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSans11pt7b.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSansBold10pt7b.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Fonts\FreeSansBold11pt7b.h" />
   </ItemGroup>
 </Project>

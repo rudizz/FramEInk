@@ -164,6 +164,7 @@
     <ClInclude Include="binary_Icons\sunset.h" />
     <ClInclude Include="binary_Icons\termometro.h" />
     <ClInclude Include="binary_Icons\yellow_white.h" />
+    <ClInclude Include="binary_Icons\drop.h" />
     <ClInclude Include="fonts.h" />
     <ClInclude Include="icons_color.h" />
     <ClInclude Include="__vm\.FramEink_6Color.vsarduino.h" />
@@ -196,6 +197,8 @@
     <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_89.bmp" />
     <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_93.bmp" />
     <Image Include="binary_Icons\icon_color\moon_phases\moon_phase_0_96.bmp" />
+    <Image Include="binary_Icons\icon_color\sunset.png" />
+    <Image Include="binary_Icons\icon_color\water.png" />
     <Image Include="binary_Icons\icon_color\weather\autumn.bmp" />
     <Image Include="binary_Icons\icon_color\weather\celsius.bmp" />
     <Image Include="binary_Icons\icon_color\weather\celsius_2.bmp" />

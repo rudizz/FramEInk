@@ -49,12 +49,14 @@ class Network
     void getDataFromOpenWeather(int* timezone_offset, char* temp_min0, char* temp_min1, char* temp_min2, char* temp_min3, char* temp_min4, char* temp_min5, char* currentTemp,
                                 char* temp_max0, char* temp_max1, char* temp_max2, char* temp_max3, char* temp_max4, char* temp_max5,
                                 char* predictability0, char* predictability1, char* predictability2, char* predictability3, char* predictability4, char* predictability5,
+                                char* precipitation_mm0, char* precipitation_mm1, char* precipitation_mm2, char* precipitation_mm3, char* precipitation_mm4, char* precipitation_mm5,
                                 char* currentWind, char* currentTime, char* currentWeather0, char* currentWeather1,
                                 char* currentWeather2, char* currentWeather3, char* currentWeather4, char* currentWeather5,
                                 char* abbr0, char* abbr1, char* abbr2, char* abbr3, char* abbr4, char* abbr5,
                                 float* moon_phase0, float* moon_phase1, float* moon_phase2, float* moon_phase3, float* moon_phase4, float* moon_phase5,
                                 char* sunrise0, char* sunrise1, char* sunrise2, char* sunrise3, char* sunrise4, char* sunrise5, 
                                 char* sunset0, char* sunset1, char* sunset2, char* sunset3, char* sunset4, char* sunset5);
+    float getRainSnowPrecipitationMM(bool isSnowing, int day);
     void getDaysLabel(char *day, char *day1, char *day2, char *day3);
 
     // Used to store loaction woeid (world id), set in findCity()
