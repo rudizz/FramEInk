@@ -27,6 +27,7 @@ class WiFiAPSettingsClass
 	 static int writeStringToEEPROM(int addrOffset, const String& strToWrite);
 	 static int readStringFromEEPROM(int addrOffset, String* strToRead);
 	 void insertParamInHTMLPage(String paramText, String paramValue);
+	 bool DEBUG_PRINT = false;
 
  public:
 	 WiFiAPSettingsClass();

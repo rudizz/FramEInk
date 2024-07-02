@@ -31,24 +31,28 @@ void Network::begin()
     WiFi.begin(ssid.c_str(), pass.c_str());
 
     int cnt = 0;
-    Serial.print(F("Waiting for WiFi to connect..."));
+    if (DEBUG_PRINT)
+        Serial.print(F("Waiting for WiFi to connect..."));
     while ((WiFi.status() != WL_CONNECTED))
     {
-        Serial.print(F("."));
+        if (DEBUG_PRINT)
+            Serial.print(F("."));
         delay(1000);
         ++cnt;
 
         WiFi.reconnect();
         delay(5000);
 
-        if (cnt == 10)
+        if (cnt == 20)
         {
-            Serial.println("Can't connect to WIFI, restarting");
+            if (DEBUG_PRINT)
+                Serial.println("Can't connect to WIFI, restarting");
             delay(100);
             ESP.restart();
         }
     }
-    Serial.println(F(" connected"));
+    if (DEBUG_PRINT)
+        Serial.println(F(" connected"));
 
     // Find internet time
     setTime();
@@ -93,7 +97,7 @@ void Network::getTimeHour(int *timeHour, long offSet)
     *timeHour = timeinfo.tm_hour;
 }
 // Function to get all calendar data from web
-bool Network::getDataCalendar(char *data)
+long Network::getDataCalendar(char *data)
 {
     // Variable to store fail
     bool f = 0;
@@ -103,23 +107,26 @@ bool Network::getDataCalendar(char *data)
     {
         WiFi.reconnect();
 
-        delay(5000);
+        delay(500);
 
         int cnt = 0;
-        Serial.println(F("Waiting for WiFi to reconnect..."));
+        //if (DEBUG_PRINT)
+            Serial.println(F("Waiting for WiFi to reconnect..."));
         while ((WiFi.status() != WL_CONNECTED))
         {
             // Prints a dot every second that wifi isn't connected
-            Serial.print(F("."));
+            //if (DEBUG_PRINT)
+                Serial.print(F("."));
             delay(1000);
             ++cnt;
 
             WiFi.reconnect();
-            delay(5000);
+            delay(1000);
 
-            if (cnt == 10)
+            if (cnt == 20)
             {
-                Serial.println("Can't connect to WIFI, restart initiated.");
+                //if (DEBUG_PRINT)
+                    Serial.println("Can't connect to WIFI, restart initiated.");
                 delay(100);
                 ESP.restart();
             }
@@ -139,44 +146,48 @@ bool Network::getDataCalendar(char *data)
 
     // Actually do request
     int httpCode = http.GET();
-
+    long n = 0;
     if (httpCode == 200)
     {
-        long n = 0;
         long timeCal = millis();
         size_t conta = 0;
-        //while (memoryNotFull && !stringContain(data, "END:VCALENDAR"))
-        //{
+        size_t contaWhile = 0;
+        while ((n < 15 || strstr(data + n - 30, "END:VCALENDAR") == nullptr) && contaWhile < 20)
+        {
          
-        // Limito il while al max size del buffer SIZE_CALENDAR_DATA
-        while (n - 4 < SIZE_CALENDAR_DATA && http.getStream().available()) {
-            data[n++] = http.getStream().read();
-            conta = 0;
-            //if (n < 1000) // print calendar data
-            //    Serial.print(data[n-1]);
-            while (!http.getStream().available() && conta < 10) // aggiungo questo controllo altrimenti esce prima di aver scaricato tutto
-            {
-                delay(30);
-                Serial.printf("Calendar waiting %i...\n", conta);
-                conta++;
+            // Limito il while al max size del buffer SIZE_CALENDAR_DATA
+            while (n - 4 < SIZE_CALENDAR_DATA && http.getStream().available()) {
+                data[n++] = http.getStream().read();
+                conta = 0;
+                //if (n < 1000) // print calendar data
+                    //Serial.print(data[n-1]);
+                while (!http.getStream().available() && conta < 10) // aggiungo questo controllo altrimenti esce prima di aver scaricato tutto
+                {
+                    delay(100);
+                    if (DEBUG_PRINT)
+                        Serial.printf("Calendar waiting %i...\n", conta);
+                    conta++;
+                }
             }
+            contaWhile++;
+            data[n] = '\0';
         }
-        //data[n] = 0;
-        //}
-        Serial.printf("Calendar downloaded in [ms]: %d, %i bytes\n", millis() - timeCal, n);
+        if (DEBUG_PRINT)
+            Serial.printf("Calendar downloaded in [ms]: %d, %i bytes\n", millis() - timeCal, n);
         data[n++] = 0;
     }
     else
     {
-        Serial.print("HTTP CODE: ");
-        Serial.println(httpCode);
+        if (DEBUG_PRINT)
+            Serial.printf("HTTP CODE: %d\n", httpCode);
         f = 1;
+        n = 1;
     }
 
     // end http
     http.end();
 
-    return !f;
+    return n;
 }
 
 // ====  WEATHER  =====
@@ -249,17 +260,20 @@ void Network::getDataFromOpenWeather(int *timezone_offset, char *temp_min0, char
         delay(5000);
 
         int cnt = 0;
-        Serial.println(F("Waiting for WiFi to reconnect..."));
+        if (DEBUG_PRINT)
+            Serial.println(F("Waiting for WiFi to reconnect..."));
         while ((WiFi.status() != WL_CONNECTED))
         {
             // Prints a dot every second that wifi isn't connected
-            Serial.print(F("."));
+            if (DEBUG_PRINT)
+                Serial.print(F("."));
             delay(1000);
             ++cnt;
 
             if (cnt == 7)
             {
-                Serial.println("Can't connect to WIFI, restart initiated.");
+                if (DEBUG_PRINT)
+                    Serial.println("Can't connect to WIFI, restart initiated.");
                 delay(100);
                 ESP.restart();
             }
@@ -299,8 +313,8 @@ void Network::getDataFromOpenWeather(int *timezone_offset, char *temp_min0, char
             // If an error happens print it to Serial monitor
             if (error)
             {
-                Serial.print(F("deserializeJson() failed: "));
-                Serial.println(error.c_str());
+                if (DEBUG_PRINT)
+                    Serial.printf("deserializeJson() failed: %s\n", error.c_str());
             }
             else
             {
@@ -401,24 +415,24 @@ void Network::setTime()
     // Used for setting correct time
     configTime(0, 0, "pool.ntp.org", "time.nist.gov");
 
-    Serial.print(F("Waiting for NTP time sync: "));
+    if (DEBUG_PRINT)
+        Serial.print(F("Waiting for NTP time sync: "));
     time_t nowSecs = time(nullptr);
     while (nowSecs < 8 * 3600 * 2)
     {
         delay(500);
-        Serial.print(F("."));
+        if (DEBUG_PRINT)
+            Serial.print(F("."));
         yield();
         nowSecs = time(nullptr);
     }
-
-    Serial.println();
 
     // Used to store time info
     struct tm timeinfo;
     gmtime_r(&nowSecs, &timeinfo);
 
-    Serial.print(F("Current time: "));
-    Serial.print(asctime(&timeinfo));
+    if (DEBUG_PRINT)
+        Serial.printf("Current time: %s\n", asctime(&timeinfo));
 }
 
 void Network::getDaysLabel(char *day, char *day1, char *day2, char *day3)

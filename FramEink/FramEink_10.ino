@@ -61,7 +61,7 @@ String calendarURL;
 //String calendarURL = "https://calendar.google.com/calendar/ical/e9jkn0qjeetjm2mkkvhubtlvrk%40group.calendar.google.com/private-7a399955cd5efd535cac7599422df2b0/basic.ics";
 
 // Indica l'offset in secondi da applicare alle date, relativo al timeZone della location Meteo impostata.
-int timeZone = 0;
+RTC_DATA_ATTR int timeZone = 0;
 
 // Set to 3 to flip the screen 180 degrees
 #define ROTATION 1
@@ -132,8 +132,9 @@ char* dataCalendar;
 EventClass entries[EventClass::MAX_CALENDAR_EVENTS];
 
 // All our functions declared below setup and loop
-void drawInfo();
+void drawCalendarName();
 void drawTime();
+void drawCalendarSize();
 void drawBattery();
 void drawGrid();
 //void getToFrom(char* dst, char* from, char* to, int* day, int* timeStamp, bool correctTimeZone);
@@ -178,7 +179,7 @@ void setup()
     display.setRotation(ROTATION);
     display.setTextWrap(false);
 
-    //settingsOK = true; // debug: quando true non mostra la schermata di settings
+    settingsOK = true; // debug: quando true non mostra la schermata di settings
     wiFiAPSettings = new WiFiAPSettingsClass();
     if (!settingsOK)
     {
@@ -241,8 +242,10 @@ void setup()
         if (calendarURL != "") {
             dataCalendar = (char*)ps_malloc(SIZE_CALENDAR_DATA); // alloco 2Mb su RAM extra del ESP32
             // Keep trying to get data if it fails the first time
-            while (!network.getDataCalendar(dataCalendar))
+            calendarSize = 0;
+            while (calendarSize < 2)
             {
+                calendarSize = network.getDataCalendar(dataCalendar);
                 if (DEBUG)
                     Serial.println("Failed getting data, retrying");
                 delay(1000);
@@ -256,9 +259,10 @@ void setup()
         drawBattery();
         if (calendarURL != "") {
             drawCalendarData();
-            drawInfo();
+            drawCalendarName();
         }
         drawGrid();
+        drawCalendarSize();
         drawTime();
 
         drawWeatherStrip();
@@ -296,7 +300,7 @@ void setup()
     //Serial.printf("Start: %d , End: %d\n", nowAwakeEpoch, network.getNowEpoch(false));
     if (nowAwakeEpoch > 0)
     {
-        computationTime = (long long)(network.getNowEpoch(false) - nowAwakeEpoch) * SEC_2_MICROSEC;
+        computationTime = (long long)(network.getNowEpoch(false) - nowAwakeEpoch +2) * SEC_2_MICROSEC;
     }
     //Serial.printf("Computation Time: %d\n", computationTime / SEC_2_MICROSEC);
 
@@ -310,7 +314,7 @@ void loop()
 }
 
 // Function for drawing calendar info
-void drawInfo()
+void drawCalendarName()
 {
     // Setting font and color
     display.setTextColor(0, 7);
@@ -355,6 +359,19 @@ void drawTime()
     dateTime[16] = 0;
     display.println(dateTime);
     dateTime[16] = t;
+}
+
+// Drawing the size of the calendar
+void drawCalendarSize()
+{
+    // Initial text settings
+    display.setTextColor(0, 7);
+    display.setFont(&FreeSans12pt7b);
+    display.setTextSize(1);
+
+    display.setCursor(marginLeft + 200, marginUp + 22);
+
+    display.printf("CalendarSize: %d",calendarSize);
 }
 
 void drawBattery()

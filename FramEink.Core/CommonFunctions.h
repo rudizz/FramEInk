@@ -22,57 +22,61 @@
 
 #pragma region VARIABLES
 
+static bool DEBUG_PRINT = false;
+
 static float moon_phase[6] = { 0, 0, 0, 0, 0, 0 };
 static char abbr_days[6][16];
 
+static long calendarSize;
+
 // Variables for storing temperature
 static char temps_min[6][4] = {
-    "0F",
-    "0F",
-    "0F",
-    "0F",
-    "0F",
-    "0F",
+    "--",
+    "--",
+    "--",
+    "--",
+    "--",
+    "--",
 };
 static char temps_max[6][4] = {
-    "0F",
-    "0F",
-    "0F",
-    "0F",
-    "0F",
-    "0F",
+    "--",
+    "--",
+    "--",
+    "--",
+    "--",
+    "--",
 };
 static char probabilityOfRain[6][5] = {
-    "0F",
-    "0F",
-    "0F",
-    "0F",
-    "0F",
-    "0F",
+    "--",
+    "--",
+    "--",
+    "--",
+    "--",
+    "--",
 };
 static char precipitation_mm[6][5] = {
-    "0F",
-    "0F",
-    "0F",
-    "0F",
-    "0F",
-    "0F",
+    "--",
+    "--",
+    "--",
+    "--",
+    "--",
+    "--",
 };
 static char sunrise_time[6][6] = {
-    "00:00",
-    "00:00",
-    "00:00",
-    "00:00",
-    "00:00",
-    "00:00"
+    "--:--",
+    "--:--",
+    "--:--",
+    "--:--",
+    "--:--",
+    "--:--"
 };
 static char sunset_time[6][6] = {
-    "00:00",
-    "00:00",
-    "00:00",
-    "00:00",
-    "00:00",
-    "00:00"
+    "--:--",
+    "--:--",
+    "--:--",
+    "--:--",
+    "--:--",
+    "--:--"
 };
 //// Variables for storing days of the week
 //static char days[8][4] = {
@@ -83,7 +87,7 @@ static char sunset_time[6][6] = {
 //};
 // Variables for storing current time and weather info
 static char city[128] = "";
-static char currentTemp[16] = "0F";
+static char currentTemp[16] = "--";
 static char currentWind[16] = "0m/s";
 static char currentTime[16] = "00:00";
 static char nameWeather[6][32] = {

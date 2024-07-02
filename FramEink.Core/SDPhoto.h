@@ -12,6 +12,7 @@ class SDPhotoClass
  protected:
 	 Inkplate *display;
 	 bool getFilePath(char* filePath, const char* dirName, uint& counter);
+	 bool DEBUG_PRINT = false;
 
  public:
 	 SDPhotoClass();

@@ -9,7 +9,13 @@ RTC_DATA_ATTR time_t last_awake = 0;
 
 bool stringContain(char* str1, const char* pattern)
 {
+    //bool value = strstr(str1, pattern) == nullptr;
+    //const char* boolStr = value ? "true" : "false";
+    //// Usa fprintf per stampare la stringa nel flusso specificato
+    //Serial.printf("stringContain: %s\n", boolStr);
+    //return strstr(str1, pattern) != nullptr;
     return strspn(str1, pattern) == strlen(pattern);
+
 }
 
 time_t checkLastAwake(long long minutes, time_t nowEpoch)
@@ -17,7 +23,8 @@ time_t checkLastAwake(long long minutes, time_t nowEpoch)
     time_t diffLastAwake = nowEpoch - last_awake;
     if (nowEpoch - last_awake < minutes * 60l)
     {
-        Serial.printf("Last awake %d too soon.Let's sleep again for %d minutes.\n", last_awake, minutes);
+        if (DEBUG_PRINT)
+            Serial.printf("Last awake %d too soon.Let's sleep again for %d minutes.\n", last_awake, minutes);
         esp_sleep_enable_timer_wakeup(minutes * MIN_2_MICROSEC);
         (void)esp_deep_sleep_start();
     }
@@ -138,7 +145,8 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
         {
             // Altrimenti lo assegno uguale al timeStart
             timeEnd = timeStart;
-            Serial.printf("\n== Manca DTEND, assegno epochTo = epochFrom ==\n");
+            if (DEBUG_PRINT)
+                Serial.printf("\n== Manca DTEND, assegno epochTo = epochFrom ==\n");
         }
 
         // //Gestisco gli eventi ripetuti nel tempo. Per ora solo Daily e Weekly, Monthly e Yearly.
@@ -162,7 +170,8 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
                 char* intervalEnd = strstr(interval, ";");
                 intervalloRipetizione = String(interval, intervalEnd - interval).toInt();
             }
-            Serial.printf("Frequenza: %d, intervalloRipetizione: %d\n", giorniFrequenzaRipetizione, intervalloRipetizione);
+            if (DEBUG_PRINT)
+                Serial.printf("Frequenza: %d, intervalloRipetizione: %d\n", giorniFrequenzaRipetizione, intervalloRipetizione);
         }
         // Sequenza
 //        char *sequence = strstr(data + i, "SEQUENCE:") + 9;
@@ -184,7 +193,8 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
         if (epochTo < epochFrom)
         {
             // In questo caso c'è stato un errore nella lettura delle epoche, quindi passo all'evento successivo
-            Serial.printf("\nERRORE: epochFrom: %d, epochTo: %d\n", epochFrom, epochTo);
+            if (DEBUG_PRINT)
+                Serial.printf("\nERRORE: epochFrom: %d, epochTo: %d\n", epochFrom, epochTo);
             continue;
         }
         // Se l'evento dura tutto il giorno, non è presente il campo di ore, min e sec.
@@ -218,7 +228,8 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
                 // Limito il campo Until all'ultimo giorno visualizzato nel calendario.
                 epochUntil = min<time_t>(getEpoch(until), epochUntil);
             }
-            Serial.printf("epoch until: %d\n", epochUntil);
+            if (DEBUG_PRINT)
+                Serial.printf("epoch until: %d\n", epochUntil);
         }
 
 
@@ -271,8 +282,9 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
                     (epochTo >= epochFirstDayShown && epochTo <= epochUntil) ||
                     (epochFrom < epochFirstDayShown && epochTo > epochUntil))
                 {
-                    Serial.printf("epochFrom: %d, epochTo: %d, epochUntil: %d, fRep: %d, lastDay: %d, iDay: %d, evtLastNDays: %d\n",
-                        epochFrom, epochTo, epochUntil, giorniFrequenzaRipetizione, epochLastDayShown, iDay, evtLastNDays);
+                    if (DEBUG_PRINT)
+                        Serial.printf("epochFrom: %d, epochTo: %d, epochUntil: %d, fRep: %d, lastDay: %d, iDay: %d, evtLastNDays: %d\n",
+                            epochFrom, epochTo, epochUntil, giorniFrequenzaRipetizione, epochLastDayShown, iDay, evtLastNDays);
                     // -- Giorni di Esclusione --
                     bool excludeDate = false;
                     char* exdate = strstr(timeEnd, "EXDATE") + 6;
@@ -303,7 +315,8 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
                     {
                         addEventToEntry(&entries[entriesNum], epochFirstDayShown,
                             epochFrom, epochTo, String(timeStart + 8, 1) != "T", summary, location, beginEvt, endEvt);
-                        Serial.printf("[ADD] entriesNum: %d, Summary: %s\n\n", entriesNum, entries[entriesNum].name);
+                        if (DEBUG_PRINT)
+                            Serial.printf("[ADD] entriesNum: %d, Summary: %s\n\n", entriesNum, entries[entriesNum].name);
                         entriesNum++;
                     }
                 }
@@ -414,7 +427,8 @@ void addEventToEntry(EventClass* dstEntry, time_t epochFirstDayShown, time_t epo
 
     // Definisco il giorno di inizio evento
     dstEntry->day = (int)((float)(epochEvtFrom - epochFirstDayShown) / 24 / 3600);
-    Serial.printf("epochFrom: %d , epochFirstDayShown: %d, day: %d\n", dstEntry->timeStamp, epochFirstDayShown, dstEntry->day);
+    if (DEBUG_PRINT)
+        Serial.printf("epochFrom: %d , epochFirstDayShown: %d, day: %d\n", dstEntry->timeStamp, epochFirstDayShown, dstEntry->day);
 }
 
 #pragma endregion

@@ -20,7 +20,8 @@ WiFiAPSettingsClass::WiFiAPSettingsClass()
 {
     // Init EEPROM library with 512 of EEPROM size. Do not change this value, it can wipe waveform data!
     EEPROM.begin(512);
-    Serial.println("begin...");
+    if (DEBUG_PRINT)
+        Serial.println("begin...");
 
     // Leggo i parametri dalla eeprom
     readEEPROM();
@@ -30,7 +31,8 @@ WiFiAPSettingsClass::WiFiAPSettingsClass()
     Latitude_User = User_Latitude;
     Longitude_User = User_Longitude;
     ICALID_User = User_ICALID;
-    Serial.println("readed EEPROM...");
+    if (DEBUG_PRINT)
+        Serial.println("readed EEPROM...");
 }
 
 void WiFiAPSettingsClass::initAP()

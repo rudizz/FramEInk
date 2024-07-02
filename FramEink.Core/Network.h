@@ -22,6 +22,7 @@ Distributed as-is; no warranty is given.
 #include <WiFiClientSecure.h>
 #include <ctime>
 #include <ArduinoJson.h>
+#include <cstring>  // Per usare strstr
 
 // To get timeZone from main file
 extern int timeZone;
@@ -45,7 +46,7 @@ class Network
     void getTime(char *timeStr, long offset = 0);
     time_t getNowEpoch(bool withTimezone);
     void getTimeHour(int *timeHour, long offSet);
-    bool getDataCalendar(char *data);
+    long getDataCalendar(char *data);
     void getDataFromOpenWeather(int* timezone_offset, char* temp_min0, char* temp_min1, char* temp_min2, char* temp_min3, char* temp_min4, char* temp_min5, char* currentTemp,
                                 char* temp_max0, char* temp_max1, char* temp_max2, char* temp_max3, char* temp_max4, char* temp_max5,
                                 char* predictability0, char* predictability1, char* predictability2, char* predictability3, char* predictability4, char* predictability5,

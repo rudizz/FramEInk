@@ -72,7 +72,7 @@ String calendarURL;
 //String calendarURL = "https://calendar.google.com/calendar/ical/e9jkn0qjeetjm2mkkvhubtlvrk%40group.calendar.google.com/private-7a399955cd5efd535cac7599422df2b0/basic.ics";
 
 // Indica l'offset in secondi da applicare alle date, relativo al timeZone della location Meteo impostata.
-int timeZone = 0;
+RTC_DATA_ATTR int timeZone = 0;
 
 // Set to 3 to flip the screen 180 degrees
 #define ROTATION 0
@@ -146,7 +146,6 @@ RTC_DATA_ATTR bool stateCalendar = true; // true: Calendar+landscapePhoto ; fals
 
 // Our networking functions, see Network.cpp for info
 Network network;
-RTC_DATA_ATTR float coeffCompensoDeepSleep = 1.0f;
 RTC_DATA_ATTR time_t lastAwake;
 // Variables for time and raw event info
 char dateTime[64];
@@ -156,7 +155,7 @@ char* dataCalendar;
 EventClass entries[EventClass::MAX_CALENDAR_EVENTS];
 
 // All our functions declared below setup and loop
-void drawInfo();
+void drawCalendarName();
 void drawTime();
 void drawBattery();
 void drawGrid();
@@ -296,7 +295,7 @@ void setup()
     }
     // Toggle the state of the InkPlate
     stateCalendar = !stateCalendar;
-    delay(1000);
+    //delay(1000);
 
 
     if (DEBUG)
@@ -309,22 +308,7 @@ void setup()
     {
         time_sleeping = 360ll; // 6h sleep
     }
-    else
-    {
-        float sleptTime = (nowAwakeEpoch - lastAwake) / 60.0f; // [min]
-        if (DEBUG)
-            Serial.printf("LastAwake: %d, NowEpoch: %d, Slept Time: %f\n", lastAwake, nowAwakeEpoch, sleptTime);
-        if (sleptTime > 0 && sleptTime < 90)
-        {
-            // Correggo il tempo di sleep in base a quanto in realtà è passato
-            coeffCompensoDeepSleep = (double)time_sleeping / sleptTime;
-            //Serial.printf("Coeff compenso deep sleep: %f\n", coeffCompensoDeepSleep);
-        }
-        //printDebugString((int)(sleptTime*1000));
-        //printDebugString((int)(coeffCompensoDeepSleep*1000));
-    }
-    if (DEBUG)
-        Serial.printf("Sleep time [us]: %d\n", time_sleeping * coeffCompensoDeepSleep * MIN_2_MICROSEC);
+
     lastAwake = time_t(nowAwakeEpoch);
 
     drawTime();
@@ -337,10 +321,13 @@ void setup()
         Serial.printf("Start: %d , End: %d\n", nowAwakeEpoch, network.getNowEpoch(false));
     if (nowAwakeEpoch > 0)
     {
-        computationTime = (long long)(network.getNowEpoch(false) - nowAwakeEpoch) * SEC_2_MICROSEC;
+        computationTime = (long long)(network.getNowEpoch(false) - nowAwakeEpoch +1) * SEC_2_MICROSEC;
     }
     if (DEBUG)
         Serial.printf("Computation Time: %d\n", computationTime / SEC_2_MICROSEC);
+
+    if (DEBUG)
+        Serial.printf("Sleep time [us]: %d\n", time_sleeping * MIN_2_MICROSEC);
 
     esp_sleep_enable_timer_wakeup(time_sleeping * MIN_2_MICROSEC - computationTime);
     (void)esp_deep_sleep_start();
@@ -362,7 +349,7 @@ void printDebugString(int value)
 }
 
 // Function for drawing calendar info
-void drawInfo()
+void drawCalendarName()
 {
     // Setting font and color
     display.setTextColor(0, 7);

@@ -19,7 +19,8 @@ SDPhotoClass::SDPhotoClass(Inkplate* _display)
 		display->setCursor(30, 30);
 		display->setTextColor(0, 7);
 		display->println("SD Card error!");
-		Serial.println("SD Card error!");
+		if (DEBUG_PRINT)
+			Serial.println("SD Card error!");
 	}
 
 }
@@ -44,12 +45,12 @@ bool SDPhotoClass::getFilePath(char* filePath, const char* dirName, uint& counte
 				}
 				file.close();
 			}
-			Serial.print("fileCount: ");
-			Serial.println(fileCount);
+			if (DEBUG_PRINT)
+				Serial.printf("fileCount: %d\n", fileCount);
 			counter = random(fileCount);
 
-			Serial.print("Random Index: ");
-			Serial.println(counter);
+			if (DEBUG_PRINT)
+				Serial.printf("Random Index: %d\n", counter);
 		}
 		dir.rewindDirectory();
 		bool fileFounded = false;
@@ -74,7 +75,8 @@ bool SDPhotoClass::getFilePath(char* filePath, const char* dirName, uint& counte
 			// Se contaCicli < 0 vuol dire che non sono presenti immagini, quindi esco dal metodo
 			if (contaCicli > -1) {
 				counter = 0;
-				Serial.println("Azzero contatore");
+				if (DEBUG_PRINT)
+					Serial.println("Azzero contatore");
 				getFilePath(fileName, dirName, counter);
 			} else {
 				return false;
@@ -115,20 +117,24 @@ void SDPhotoClass::drawImageFromSD(int x, int y, PhotoOrientation orientation, u
 		{
 			if (getFilePath(filePath, dirName, counter))
 			{
-				Serial.println(filePath);
+				if (DEBUG_PRINT)
+					Serial.println(filePath);
 				if (display->drawImage(filePath, x, y, true, false))
 				{
-					Serial.println("Draw Image true");
+					if (DEBUG_PRINT)
+						Serial.println("Draw Image true");
 					imageDrawed = true;
 				}
 				else {
-					Serial.println("Draw Image false");
+					if (DEBUG_PRINT)
+						Serial.println("Draw Image false");
 					counter++;
 				}
 			}
 			else
 			{
-				Serial.println("Warning: image not found!");
+				if (DEBUG_PRINT)
+					Serial.println("Warning: image not found!");
 				//Serial.println(new String("Warning: image not found at path: ")->concat(&filePath));
 			}
 		}
