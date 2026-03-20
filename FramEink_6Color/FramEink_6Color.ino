@@ -311,7 +311,8 @@ void setup()
 
     lastAwake = time_t(nowAwakeEpoch);
 
-    drawTime();
+    // Debug per vedere a che ora si aggiorna
+    //drawTime();
 
     // Can't do partial due to deepsleep
     display.display();
