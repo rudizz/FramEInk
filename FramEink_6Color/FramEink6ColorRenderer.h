@@ -346,9 +346,11 @@ class FramEink6ColorRenderer : public frameink::IApplicationRenderer
         for (int i = 0; i < calendar.eventCount; ++i)
         {
             const EventClass &event = calendar.events[i];
-            if (event.day != -1 && clogged[event.day])
+            if (event.day < 0 || event.day >= columns_ * rows_)
+                continue;
+            if (clogged[event.day])
                 ++cloggedCount[event.day];
-            if (event.day == -1 || clogged[event.day])
+            if (clogged[event.day])
                 continue;
 
             int shift = 0;

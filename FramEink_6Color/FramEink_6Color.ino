@@ -16,12 +16,12 @@
 
 #include "FramEink6ColorRenderer.h"
 
-const bool DEBUG = false;
+const bool DEBUG = true;
 
 static frameink::ApplicationRuntime makeInitialRuntimeState()
 {
     frameink::ApplicationRuntime runtime;
-    runtime.settingsOk = false;
+    runtime.settingsOk = true;
     runtime.stateCalendar = true;
     runtime.timeZoneSeconds = 0;
     runtime.sleepMinutes = 60ll;

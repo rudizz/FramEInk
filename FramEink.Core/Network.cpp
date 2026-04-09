@@ -16,8 +16,8 @@ Distributed as-is; no warranty is given.
 
 #include "Network.h"
 
-// Static Json from ArduinoJson library
-StaticJsonDocument<6000> doc;
+// Shared JSON document for weather parsing.
+JsonDocument doc;
 
 // Declared week days
 char weekDays[7][4] = {
@@ -327,6 +327,7 @@ bool Network::loadWeatherForecast(frameink::WeatherForecast &forecast)
 
         if (len > 0)
         {
+            doc.clear();
             // Try parsing JSON object
             DeserializationError error = deserializeJson(doc, http.getStream());
 

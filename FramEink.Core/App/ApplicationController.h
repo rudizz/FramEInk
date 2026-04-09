@@ -11,7 +11,7 @@ namespace frameink {
 
 struct ApplicationRuntime
 {
-    bool settingsOk = false;
+    bool settingsOk = true;
     bool stateCalendar = true;
     int timeZoneSeconds = 0;
     long long sleepMinutes = 60ll;
