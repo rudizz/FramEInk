@@ -36,8 +36,8 @@
 
 // Include Inkplate library to the sketch
 #include "Inkplate.h"
-#include "SDPhoto.h"
-#include "EventClass.h"
+#include <SDPhoto.h>
+#include <EventClass.h>
 
 // Including fonts
 #include "fonts.h"
@@ -47,9 +47,9 @@
 #include "icons_1bit.h"
 
 // Includes
-#include "Network.h"
-#include "CommonFunctions.h"
-#include "WiFiAccessPoint/WiFiAPSettings.h"
+#include <Network.h>
+#include <CommonFunctions.h>
+#include <WiFiAccessPoint/WiFiAPSettings.h>
 #include <algorithm>
 #include <ctime>
 
@@ -91,13 +91,13 @@ const uint16_t colorCalendarLocation = 0;
 // WiFi AP Settings
 WiFiAPSettingsClass* wiFiAPSettings = NULL;
 RTC_DATA_ATTR bool settingsOK = false; // viene messa a true dopo che vengono settati i parametri, 
-// così non compare più la pagina dei Settings
+// cosï¿½ non compare piï¿½ la pagina dei Settings
 
 // WEATHER  -----------------
 // City filled by query
 #define icon_weather_height 96
 // height of the weather strip
-int headerWeather = 40; // qui verrà aggiunto icon_height
+int headerWeather = 40; // qui verrï¿½ aggiunto icon_height
 
 // Constants used for drawing icons
 char abbrs[11][4] = { "13d", "sl", "h", "11d", "10d", "lr", "09d", "04d", "02d", "01d", "03d" };
@@ -165,7 +165,7 @@ void setup()
         WIDTH = display.height();
         HEIGHT = display.width();
     }
-    // Se stampo due righe di Calendario, allora non stampo la foto in modalità Portrait
+    // Se stampo due righe di Calendario, allora non stampo la foto in modalitï¿½ Portrait
     if (ROWS > 1)
     {
         HEIGHT_PHOTO = 0;
@@ -273,7 +273,7 @@ void setup()
         // Photo
         if (ROWS < 2)
         {
-            // Attivo modalità Random su Photo
+            // Attivo modalitï¿½ Random su Photo
             counterLandscape = -1;
             sdPhoto->drawImageFromSD(0, HEIGHT_PHOTO + 3, SDPhotoClass::PhotoOrientation::landscape, counterLandscape);
         }
@@ -412,7 +412,7 @@ void drawGrid()
                 display.drawBitmap3Bit(x1 + col, y1 + row + (float)i * (float)(y2 - y1) / (float)n, light_gray, light_gray_w, light_gray_h);
             }
         }
-        // Disegno una linea di separazione leggermente più scura del light_gray
+        // Disegno una linea di separazione leggermente piï¿½ scura del light_gray
         display.fillRect(x1, (int)((float)y1 + headerDay - thickLineGrid + (float)i * (float)(y2 - y1) / (float)n), (x2 - x1), thickLineGrid, 6);
 
     }
@@ -478,7 +478,7 @@ bool drawEvent(EventClass* event, int day, int beginY, int maxHeigth, int* heigt
     //for (int i = 0; i < min(EventClass::MAX_N_CHAR_TITLE_CALENDAR, (int)strlen(event->name)); ++i)
     for (int i = 0; i < min(65, (int)strlen(event->name)); ++i)
     {
-        // Se il primo carattere è uno spazio, lo salto
+        // Se il primo carattere ï¿½ uno spazio, lo salto
         if (n == 0 && event->name[i] == ' ')
             i++;
 
@@ -526,7 +526,7 @@ bool drawEvent(EventClass* event, int day, int beginY, int maxHeigth, int* heigt
     }
 
     // display last line of text
-    // Può capitare che vado a capo e la prima riga è il terminatore, in quel caso non stampo niente.
+    // Puï¿½ capitare che vado a capo e la prima riga ï¿½ il terminatore, in quel caso non stampo niente.
     if (line[0] != 0)
     {
         display.setCursor(xStartTitle, display.getCursorY() + interlinea);
@@ -589,7 +589,7 @@ bool drawEvent(EventClass* event, int day, int beginY, int maxHeigth, int* heigt
 
     // Return is it overflowing
     return display.getCursorY() < maxHeigth - 100; // ipotizzo che il prossimo evento sia alto 100 pixel
-    // se rimangono più di 100 pixel, il prossimo evento viene mostrato, se è più alto di 100 px vengono mostrati
+    // se rimangono piï¿½ di 100 pixel, il prossimo evento viene mostrato, se ï¿½ piï¿½ alto di 100 px vengono mostrati
     // solo i primi 100 px (3 righe)
 }
 
@@ -609,7 +609,7 @@ void drawCalendarData()
     char* endCal = dataCalendar + strlen(dataCalendar) - 1;
 
     // Creo le epoch della finestra di inizio e fine giorni da visualizzare.
-    // Finestra è dalle 00:00 del primo giorno alle 23:59 dell'ultimo giorno.
+    // Finestra ï¿½ dalle 00:00 del primo giorno alle 23:59 dell'ultimo giorno.
     time_t epochFirstDayShown = resetEpochOf(network.getNowEpoch(true), 
                                              false,
                                              false,
@@ -677,7 +677,7 @@ void drawCalendarData()
             display.setFont(&FreeSans9pt7b);
             display.print(cloggedCount[i]);
             display.print(" more event");
-            // Se c'è più di un evento, metto il plurale ad events
+            // Se c'ï¿½ piï¿½ di un evento, metto il plurale ad events
             if (cloggedCount[i] > 1)
             {
                 display.print("s");
@@ -730,13 +730,13 @@ void drawWeatherTemp(int x, int y, int day)
     display.setCursor(x, y + 2);
     display.print(temps_max[day]);
     display.setFont(&FreeSans12pt7b);
-    //display.println("° C");
+    //display.println("ï¿½ C");
     // Temp Min
     display.setFont(&FreeSans18pt7b);
     display.setCursor(x, y + 38);
     display.print(temps_min[day]);
     display.setFont(&FreeSans12pt7b);
-    //display.println(F("° C"));
+    //display.println(F("ï¿½ C"));
 
     int16_t x1, y1;
     uint16_t wMax, wMin, h;

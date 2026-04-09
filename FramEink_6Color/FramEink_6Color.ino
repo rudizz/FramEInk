@@ -49,15 +49,15 @@ const bool DEBUG = false;
 #include <WiFiUdp.h>
 #include <ArduinoJson.hpp>
 #include "Inkplate.h"
-#include "SDPhoto.h"
-#include "EventClass.h"
+#include <SDPhoto.h>
+#include <EventClass.h>
 
 #include "fonts.h"
 #include "icons_color.h"
 
-#include "Network.h"
-#include "CommonFunctions.h"
-#include "WiFiAccessPoint/WiFiAPSettings.h"
+#include <Network.h>
+#include <CommonFunctions.h>
+#include <WiFiAccessPoint/WiFiAPSettings.h>
 #include <algorithm>
 #include <ctime>
 //#include <uICAL.h>
@@ -97,18 +97,18 @@ const uint16_t colorCalendarTitle = INKPLATE_BLUE;
 const uint16_t colorCalendarTime = INKPLATE_RED;
 const uint16_t colorCalendarLocation = INKPLATE_GREEN;
 const uint16_t colorSunsetSunrise = INKPLATE_ORANGE;
-// Indica se ho già mostrato una volta il tempo di Sunrise e Sunset
+// Indica se ho giï¿½ mostrato una volta il tempo di Sunrise e Sunset
 bool isSunriseShowed = false;
 // WiFi AP Settings
 WiFiAPSettingsClass* wiFiAPSettings = NULL;
 RTC_DATA_ATTR bool settingsOK = false; // viene messa a true dopo che vengono settati i parametri, 
-                                       // così non compare più la pagina dei Settings
+                                       // cosï¿½ non compare piï¿½ la pagina dei Settings
 
 // WEATHER  -----------------
 // City filled by query
 #define icon_weather_height color_01d_clear_h
 // height of the weather strip
-int headerWeather = 40; // qui verrà aggiunto icon_height
+int headerWeather = 40; // qui verrï¿½ aggiunto icon_height
 const uint16_t colorDayTitle = INKPLATE_BLACK;
 const uint16_t colorWeatherTempMax = INKPLATE_RED;
 const uint16_t colorWeatherTempMin = INKPLATE_BLUE;
@@ -490,7 +490,7 @@ bool drawEvent(EventClass* event, int day, int beginY, int maxHeigth, int* heigt
     display.setCursor(xStartTitle, beginY + 33); // offset tra la linea alta della griglia e l'inizio del testo
     for (int i = 0; i < min(EventClass::MAX_N_CHAR_TITLE_CALENDAR, (int)strlen(event->name)); ++i)
     {
-        // Se il primo carattere è uno spazio, lo salto
+        // Se il primo carattere ï¿½ uno spazio, lo salto
         if (n == 0 && event->name[i] == ' ')
             i++;
 
@@ -532,7 +532,7 @@ bool drawEvent(EventClass* event, int day, int beginY, int maxHeigth, int* heigt
     }
 
     // display last line of text
-    // Può capitare che vado a capo e la prima riga è il terminatore, in quel caso non stampo niente.
+    // Puï¿½ capitare che vado a capo e la prima riga ï¿½ il terminatore, in quel caso non stampo niente.
     if (line[0] != 0)
     {
         display.setCursor(xStartTitle, display.getCursorY() + interlinea);
@@ -595,7 +595,7 @@ bool drawEvent(EventClass* event, int day, int beginY, int maxHeigth, int* heigt
 
     // Return is it overflowing
     return display.getCursorY() < maxHeigth - 100; // ipotizzo che il prossimo evento sia alto 100 pixel
-    // se rimangono più di 100 pixel, il prossimo evento viene mostrato, se è più alto di 100 px vengono mostrati
+    // se rimangono piï¿½ di 100 pixel, il prossimo evento viene mostrato, se ï¿½ piï¿½ alto di 100 px vengono mostrati
     // solo i primi 100 px (3 righe)
 }
 
@@ -615,7 +615,7 @@ void drawCalendarData()
     char* endCal = dataCalendar + strlen(dataCalendar)-1;
 
     // Creo le epoch della finestra di inizio e fine giorni da visualizzare.
-    // Finestra è dalle 00:00 del primo giorno alle 23:59 dell'ultimo giorno.
+    // Finestra ï¿½ dalle 00:00 del primo giorno alle 23:59 dell'ultimo giorno.
     time_t epochFirstDayShown = resetEpochOf(network.getNowEpoch(true), false,
         false,
         false,
@@ -710,7 +710,7 @@ void drawCalendarData()
             display.setFont(&FreeSansBold9pt7b);
             display.print(cloggedCount[i]);
             display.print(" more event");
-            // Se c'è più di un evento, metto il plurale ad events
+            // Se c'ï¿½ piï¿½ di un evento, metto il plurale ad events
             if (cloggedCount[i] > 1)
             {
                 display.print("s");
@@ -764,14 +764,14 @@ void drawWeatherTemp(int x, int y, int day)
     display.setCursor(xTempMax, y);
     display.print(temps_max[day]);
     /*display.setFont(&FreeSans9pt7b);
-    display.println("° C");*/
+    display.println("ï¿½ C");*/
     // Temp Min
     display.setFont(&FreeSansSerifBold14pt7b);
     display.setTextColor(colorWeatherTempMin);
     display.setCursor(xTempMin, y + 30);
     display.print(temps_min[day]);
     /*display.setFont(&FreeSans9pt7b);
-    display.println(F("° C"));*/
+    display.println(F("ï¿½ C"));*/
 
     display.drawBitmap3Bit(xTermometro, y - 28, termometro, termometro_w, termometro_h);
 }
@@ -940,4 +940,3 @@ void drawCentreString(const char* text, int x, int y)
     display.setCursor(x - (w / 2), y + (h / 2));
     display.print(text);
 }
-
