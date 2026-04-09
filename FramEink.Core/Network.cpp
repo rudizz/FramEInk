@@ -24,11 +24,36 @@ char weekDays[7][4] = {
     "Mon", "Tue", "Wed", "Thr", "Fri", "Sat", "Sun",
 };
 
+Network::Network()
+{
+}
+
+Network::Network(frameink::NetworkConfiguration *configuration)
+{
+    setConfiguration(configuration);
+}
+
+void Network::setConfiguration(frameink::NetworkConfiguration *configuration)
+{
+    if (configuration != nullptr)
+        configuration_ = configuration;
+}
+
+frameink::NetworkConfiguration &Network::configuration()
+{
+    return *configuration_;
+}
+
+const frameink::NetworkConfiguration &Network::configuration() const
+{
+    return *configuration_;
+}
+
 void Network::begin()
 {
     // Initiating wifi, like in BasicHttpClient example
     WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid.c_str(), pass.c_str());
+    WiFi.begin(configuration_->device.wifiSsid.c_str(), configuration_->device.wifiPassword.c_str());
 
     int cnt = 0;
     if (DEBUG_PRINT)
@@ -78,7 +103,7 @@ time_t Network::getNowEpoch(bool withTimezone)
     //return 1677327149; // 25 feb 2023
     //return 1712917792;
     if (withTimezone)
-        return time(nullptr) + (long)timeZone;
+        return time(nullptr) + (long)configuration_->timeZoneSeconds;
     // Get seconds since 1.1.1970.
     return time(nullptr);
 }
@@ -140,7 +165,7 @@ long Network::getDataCalendar(char *data)
     http.getStream().flush();
 
     // Begin http by passing url to it
-    http.begin(calendarURL);
+    http.begin(configuration_->device.calendarUrl);
 
     delay(300);
 
@@ -241,16 +266,7 @@ void formatSunrise(char *str, time_t epochSunrise)
     padZeros(str + 3);
 }
 
-void Network::getDataFromOpenWeather(int *timezone_offset, char *temp_min0, char *temp_min1, char *temp_min2, char *temp_min3, char *temp_min4, char *temp_min5, char *currentTemp,
-                      char *temp_max0, char *temp_max1, char *temp_max2, char *temp_max3, char *temp_max4, char *temp_max5,
-                      char *probOfRain0, char *probOfRain1, char *probOfRain2, char *probOfRain3, char *probOfRain4, char *probOfRain5,
-                      char *precipitation_mm0, char * precipitation_mm1, char * precipitation_mm2, char * precipitation_mm3, char * precipitation_mm4, char * precipitation_mm5,
-                      char *currentWind, char *currentTime, char *currentWeather0, char *currentWeather1,
-                      char *currentWeather2, char *currentWeather3, char *currentWeather4, char *currentWeather5,
-                      char *abbr0, char *abbr1, char *abbr2, char *abbr3, char *abbr4, char *abbr5,
-                      float *moon_phase0, float *moon_phase1, float *moon_phase2, float *moon_phase3, float *moon_phase4, float *moon_phase5,
-                      char* sunrise0, char* sunrise1, char* sunrise2, char* sunrise3, char* sunrise4, char* sunrise5,
-                      char* sunset0, char* sunset1, char* sunset2, char* sunset3, char* sunset4, char* sunset5)
+bool Network::loadWeatherForecast(frameink::WeatherForecast &forecast)
 {
     // If not connected to wifi reconnect wifi
     if (WiFi.status() != WL_CONNECTED)
@@ -293,7 +309,10 @@ void Network::getDataFromOpenWeather(int *timezone_offset, char *temp_min0, char
     // Add woeid to api call
     char url[256];
     //sprintf(url, "https://www.metaweather.com/api/location/%d/", location);
-    sprintf(url, "https://api.openweathermap.org/data/3.0/onecall?units=metric&exclude=current,minutely,hourly,alerts&lat=%.4f&lon=%.4f&appid=136b1eed9485c22eee88ea1c437650af", latitude, longitude);
+    sprintf(url,
+        "https://api.openweathermap.org/data/3.0/onecall?units=metric&exclude=current,minutely,hourly,alerts&lat=%.4f&lon=%.4f&appid=136b1eed9485c22eee88ea1c437650af",
+        configuration_->device.coordinates.latitude,
+        configuration_->device.coordinates.longitude);
     // https://api.openweathermap.org/data/3.0/onecall?units=metric&exclude=current,minutely,hourly,alerts&lat=48.150914&lon=11.567003&appid=136b1eed9485c22eee88ea1c437650af
 
     // Initiate http
@@ -301,6 +320,7 @@ void Network::getDataFromOpenWeather(int *timezone_offset, char *temp_min0, char
 
     // Actually do request
     int httpCode = http.GET();
+    bool loaded = false;
     if (httpCode == 200)
     {
         int32_t len = http.getSize();
@@ -320,76 +340,30 @@ void Network::getDataFromOpenWeather(int *timezone_offset, char *temp_min0, char
             {
                 // Set all data got from internet using formatTemp and formatWind defined above
                 // This part relies heavily on ArduinoJson library
-                formatTemp(currentTemp, doc["daily"][0][F("temp")]["day"].as<float>());
-                formatWind(currentWind, doc["daily"][0][F("wind_speed")].as<float>());
+                formatTemp(forecast.currentTemperature, doc["daily"][0][F("temp")]["day"].as<float>());
+                formatWind(forecast.currentWind, doc["daily"][0][F("wind_speed")].as<float>());
+                forecast.timeZoneSeconds = doc["timezone_offset"].as<int>();
 
-                *timezone_offset = doc["timezone_offset"].as<int>();
-                ;
-                strcpy(currentWeather0, doc["daily"][0]["weather"][0]["main"].as<const char*>());
-                strcpy(currentWeather1, doc["daily"][1]["weather"][0]["main"].as<const char *>());
-                strcpy(currentWeather2, doc["daily"][2]["weather"][0]["main"].as<const char *>());
-                strcpy(currentWeather3, doc["daily"][3]["weather"][0]["main"].as<const char *>());
-                strcpy(currentWeather4, doc["daily"][4]["weather"][0]["main"].as<const char *>());
-                strcpy(currentWeather5, doc["daily"][5]["weather"][0]["main"].as<const char *>());
-                ;
+                for (size_t day = 0; day < frameink::WeatherForecast::DayCount; ++day)
+                {
+                    frameink::WeatherDayForecast &dayForecast = forecast.days[day];
 
-                strcpy(abbr0, doc["daily"][0]["weather"][0]["icon"].as<const char *>());
-                strcpy(abbr1, doc["daily"][1]["weather"][0]["icon"].as<const char *>());
-                strcpy(abbr2, doc["daily"][2]["weather"][0]["icon"].as<const char *>());
-                strcpy(abbr3, doc["daily"][3]["weather"][0]["icon"].as<const char *>());
-                strcpy(abbr4, doc["daily"][4]["weather"][0]["icon"].as<const char *>());
-                strcpy(abbr5, doc["daily"][5]["weather"][0]["icon"].as<const char *>());
-                ;
-                // Min Temp
-                formatTemp(temp_min0, doc["daily"][0]["temp"][F("min")].as<float>());
-                formatTemp(temp_min1, doc["daily"][1]["temp"][F("min")].as<float>());
-                formatTemp(temp_min2, doc["daily"][2]["temp"][F("min")].as<float>());
-                formatTemp(temp_min3, doc["daily"][3]["temp"][F("min")].as<float>());
-                formatTemp(temp_min4, doc["daily"][4]["temp"][F("min")].as<float>());
-                formatTemp(temp_min5, doc["daily"][5]["temp"][F("min")].as<float>());
-                // Max Temp
-                formatTemp(temp_max0, doc["daily"][0]["temp"][F("max")].as<float>());
-                formatTemp(temp_max1, doc["daily"][1]["temp"][F("max")].as<float>());
-                formatTemp(temp_max2, doc["daily"][2]["temp"][F("max")].as<float>());
-                formatTemp(temp_max3, doc["daily"][3]["temp"][F("max")].as<float>());
-                formatTemp(temp_max4, doc["daily"][4]["temp"][F("max")].as<float>());
-                formatTemp(temp_max5, doc["daily"][5]["temp"][F("max")].as<float>());
-                // Probability of rain
-                formatProbOfRain(probOfRain0, doc["daily"][0][F("pop")].as<float>() * 100);
-                formatProbOfRain(probOfRain1, doc["daily"][1][F("pop")].as<float>() * 100);
-                formatProbOfRain(probOfRain2, doc["daily"][2][F("pop")].as<float>() * 100);
-                formatProbOfRain(probOfRain3, doc["daily"][3][F("pop")].as<float>() * 100);
-                formatProbOfRain(probOfRain4, doc["daily"][4][F("pop")].as<float>() * 100);
-                formatProbOfRain(probOfRain5, doc["daily"][5][F("pop")].as<float>() * 100);
-                // Rain volume
-                formatPrecipitationMM(precipitation_mm0, getRainSnowPrecipitationMM(strcmp(abbr0, "13d") == 0, 0));
-                formatPrecipitationMM(precipitation_mm1, getRainSnowPrecipitationMM(strcmp(abbr1, "13d") == 0, 1));
-                formatPrecipitationMM(precipitation_mm2, getRainSnowPrecipitationMM(strcmp(abbr2, "13d") == 0, 2));
-                formatPrecipitationMM(precipitation_mm3, getRainSnowPrecipitationMM(strcmp(abbr3, "13d") == 0, 3));
-                formatPrecipitationMM(precipitation_mm4, getRainSnowPrecipitationMM(strcmp(abbr4, "13d") == 0, 4));
-                formatPrecipitationMM(precipitation_mm5, getRainSnowPrecipitationMM(strcmp(abbr5, "13d") == 0, 5));
-                // Moon Phase
-                *moon_phase0 = doc["daily"][0][F("moon_phase")].as<float>();
-                *moon_phase1 = doc["daily"][1][F("moon_phase")].as<float>();
-                *moon_phase2 = doc["daily"][2][F("moon_phase")].as<float>();
-                *moon_phase3 = doc["daily"][3][F("moon_phase")].as<float>();
-                *moon_phase4 = doc["daily"][4][F("moon_phase")].as<float>();
-                *moon_phase5 = doc["daily"][5][F("moon_phase")].as<float>();
-                // Sunrise
-                formatSunrise(sunrise0, doc["daily"][0][F("sunrise")].as<time_t>() + *timezone_offset);
-                formatSunrise(sunrise1, doc["daily"][1][F("sunrise")].as<time_t>() + *timezone_offset);
-                formatSunrise(sunrise2, doc["daily"][2][F("sunrise")].as<time_t>() + *timezone_offset);
-                formatSunrise(sunrise3, doc["daily"][3][F("sunrise")].as<time_t>() + *timezone_offset);
-                formatSunrise(sunrise4, doc["daily"][4][F("sunrise")].as<time_t>() + *timezone_offset);
-                formatSunrise(sunrise5, doc["daily"][5][F("sunrise")].as<time_t>() + *timezone_offset);
-                // Sunset
-                formatSunrise(sunset0, doc["daily"][0][F("sunset")].as<time_t>() + *timezone_offset);
-                formatSunrise(sunset1, doc["daily"][1][F("sunset")].as<time_t>() + *timezone_offset);
-                formatSunrise(sunset2, doc["daily"][2][F("sunset")].as<time_t>() + *timezone_offset);
-                formatSunrise(sunset3, doc["daily"][3][F("sunset")].as<time_t>() + *timezone_offset);
-                formatSunrise(sunset4, doc["daily"][4][F("sunset")].as<time_t>() + *timezone_offset);
-                formatSunrise(sunset5, doc["daily"][5][F("sunset")].as<time_t>() + *timezone_offset);
+                    strcpy(dayForecast.condition, doc["daily"][day]["weather"][0]["main"].as<const char *>());
+                    strcpy(dayForecast.iconCode, doc["daily"][day]["weather"][0]["icon"].as<const char *>());
 
+                    formatTemp(dayForecast.minimumTemperature, doc["daily"][day]["temp"][F("min")].as<float>());
+                    formatTemp(dayForecast.maximumTemperature, doc["daily"][day]["temp"][F("max")].as<float>());
+                    formatProbOfRain(dayForecast.precipitationProbability, doc["daily"][day][F("pop")].as<float>() * 100);
+                    dayForecast.hasPrecipitation = doc["daily"][day][F("pop")].as<float>() > 0.0f;
+                    formatPrecipitationMM(
+                        dayForecast.precipitationMillimeters,
+                        getRainSnowPrecipitationMM(strcmp(dayForecast.iconCode, "13d") == 0, day));
+                    dayForecast.moonPhase = doc["daily"][day][F("moon_phase")].as<float>();
+                    formatSunrise(dayForecast.sunrise, doc["daily"][day][F("sunrise")].as<time_t>() + forecast.timeZoneSeconds);
+                    formatSunrise(dayForecast.sunset, doc["daily"][day][F("sunset")].as<time_t>() + forecast.timeZoneSeconds);
+                }
+
+                loaded = true;
             }
         }
     }
@@ -400,6 +374,7 @@ void Network::getDataFromOpenWeather(int *timezone_offset, char *temp_min0, char
 
     // Return to initial state
     WiFi.setSleep(sleep);
+    return loaded;
 }
 
 float Network::getRainSnowPrecipitationMM(bool isSnowing, int day)
@@ -445,7 +420,7 @@ void Network::getDaysLabel(char *day, char *day1, char *day2, char *day3)
     // We get seconds since 1970, add 3600 (1 hour) times the time zone and add 3 to
     // make monday the first day of the week, as 1.1.1970. was a thursday
     // finally do mod 7 to insure our day is within [0, 6]
-    int dayWeek = ((long)((nowSecs + timeZone) / 86400L) + 3) % 7;
+    int dayWeek = ((long)((nowSecs + configuration_->timeZoneSeconds) / 86400L) + 3) % 7;
 
     // Copy day data to globals in main file
     strncpy(day, weekDays[dayWeek], 3);

@@ -69,6 +69,7 @@ void WiFiAPSettingsClass::loop()
     while (!settingsDone && millis() - t0 < settingDuration * 60 * 1000)
     {
         server.handleClient(); // You have to constantly read if there is any new client connected to web server
+        delay(1); // Feed the watchdog while waiting on the captive portal.
     }
     // Copy the settings parameters to public variables
     SSID_User = User_SSID;
@@ -155,7 +156,3 @@ int WiFiAPSettingsClass::readStringFromEEPROM(int addrOffset, String* strToRead)
     //Serial.printf("EEPROM Read: %s\n", * strToRead);
     return addrOffset + 1 + newStrLen;
 }
-
-
-WiFiAPSettingsClass WiFiAPSettings;
-
