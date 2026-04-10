@@ -1,7 +1,7 @@
 FramEInk is a e-paper display controlled by an ESP32.
-Every hour it changes the content between 2 frames:
+Every hour it changes the content between 2 scenarios:
 1. Weather + Calendar events + Moon Phase
-2. Random image loaded from the sd card
+2. Random image loaded from an sd card
 
 Weather data is provided by OpenWeather service.
 Calendar events are retrieved from a personal Google Calendar.
