@@ -21,8 +21,8 @@ const bool DEBUG = true;
 static frameink::ApplicationRuntime makeInitialRuntimeState()
 {
     frameink::ApplicationRuntime runtime;
-    runtime.settingsOk = true;
-    runtime.stateCalendar = true;
+    runtime.settingsOk = true; // true: skip settings portal at first start, false: show settings portal at first start
+    runtime.stateCalendar = true; // true: show calendar dashboard, false: show photo at first start
     runtime.timeZoneSeconds = 0;
     runtime.sleepMinutes = 60ll;
     runtime.lastAwakeEpoch = 0;
@@ -35,14 +35,14 @@ static frameink::RefreshPolicy makeRefreshPolicy()
 {
     frameink::RefreshPolicy policy;
     policy.visibleDays = 3;
-    policy.defaultSleepMinutes = 60ll;
+    policy.defaultSleepMinutes = 60ll; // change this to set the sleep time between refreshes when not in overnight hours
     policy.overnightSleepMinutes = 360ll;
     policy.overnightStartHour = 23;
     policy.overnightEndHour = 2;
     return policy;
 }
 
-RTC_DATA_ATTR frameink::ApplicationRuntime runtimeState = makeInitialRuntimeState();
+RTC_DATA_ATTR frameink::ApplicationRuntime runtimeState;
 
 frameink::NetworkConfiguration networkConfiguration;
 Network network(&networkConfiguration);
@@ -61,6 +61,10 @@ void setup()
         Serial.begin(115200);
         Serial.println("Inizializzo...");
     }
+
+    const esp_sleep_wakeup_cause_t wakeupCause = esp_sleep_get_wakeup_cause();
+    if (wakeupCause == ESP_SLEEP_WAKEUP_UNDEFINED)
+        runtimeState = makeInitialRuntimeState();
 
     if (settingsService == nullptr)
         settingsService = new frameink::PortalSettingsService();

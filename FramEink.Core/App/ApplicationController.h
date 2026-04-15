@@ -11,13 +11,13 @@ namespace frameink {
 
 struct ApplicationRuntime
 {
-    bool settingsOk = true;
-    bool stateCalendar = true;
-    int timeZoneSeconds = 0;
-    long long sleepMinutes = 60ll;
-    time_t lastAwakeEpoch = 0;
-    unsigned int counterPortrait = 0;
-    unsigned int counterLandscape = 0;
+    bool settingsOk;
+    bool stateCalendar;
+    int timeZoneSeconds;
+    long long sleepMinutes;
+    time_t lastAwakeEpoch;
+    unsigned int counterPortrait;
+    unsigned int counterLandscape;
 };
 
 struct RefreshPolicy
