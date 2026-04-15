@@ -601,7 +601,19 @@ void parseRecurrenceRule(const char* ruleValue, int timeZoneSeconds, RecurrenceR
     }
 }
 
-void collectExDates(const char* eventStart, const char* eventEnd, ExDateList& exDates)
+bool exDateCanAffectVisibleRange(time_t exDate, bool dateOnly, time_t visibleStartWindow, time_t epochLastDayShown)
+{
+    time_t normalizedExDate = dateOnly ? resetEpochOf(exDate, false, false, false, true, true, true) : exDate;
+    return normalizedExDate >= visibleStartWindow && normalizedExDate <= epochLastDayShown;
+}
+
+void collectExDates(
+    const char* eventStart,
+    const char* eventEnd,
+    ExDateList& exDates,
+    time_t visibleStartWindow,
+    time_t epochLastDayShown,
+    int timeZoneSeconds)
 {
     exDates = ExDateList {};
 
@@ -627,6 +639,7 @@ void collectExDates(const char* eventStart, const char* eventEnd, ExDateList& ex
                 ICalProperty exDateProperty;
                 exDateProperty.found = true;
                 exDateProperty.isDateOnly = property.isDateOnly || strchr(token, 'T') == nullptr;
+                exDateProperty.hasTimezoneId = property.hasTimezoneId;
                 strncpy(exDateProperty.value, token, sizeof(exDateProperty.value) - 1);
                 exDateProperty.value[sizeof(exDateProperty.value) - 1] = 0;
                 trimLineEnd(exDateProperty.value);
@@ -634,10 +647,18 @@ void collectExDates(const char* eventStart, const char* eventEnd, ExDateList& ex
                 size_t tokenLength = strlen(exDateProperty.value);
                 exDateProperty.isUtc = tokenLength > 0 && exDateProperty.value[tokenLength - 1] == 'Z';
 
-                if (parseICalDateTime(exDateProperty, exDates.values[exDates.count]))
+                time_t exDate = 0;
+                if (parseICalDateTime(exDateProperty, exDate))
                 {
-                    exDates.dateOnly[exDates.count] = exDateProperty.isDateOnly;
-                    ++exDates.count;
+                    if (exDateProperty.isUtc && !exDateProperty.hasTimezoneId && !exDateProperty.isDateOnly)
+                        exDate += (time_t)timeZoneSeconds;
+
+                    if (exDateCanAffectVisibleRange(exDate, exDateProperty.isDateOnly, visibleStartWindow, epochLastDayShown))
+                    {
+                        exDates.values[exDates.count] = exDate;
+                        exDates.dateOnly[exDates.count] = exDateProperty.isDateOnly;
+                        ++exDates.count;
+                    }
                 }
 
                 token = strtok_r(nullptr, ",", &savePtr);
@@ -678,6 +699,20 @@ bool isExcludedOccurrence(const ExDateList& exDates, time_t occurrenceStart, boo
 bool overlapsVisibleRange(time_t from, time_t to, time_t visibleFrom, time_t visibleTo)
 {
     return !(to < visibleFrom || from > visibleTo);
+}
+
+time_t fastForwardOccurrence(time_t occurrenceStart, time_t visibleStartWindow, time_t stepSeconds)
+{
+    if (stepSeconds <= 0 || occurrenceStart >= visibleStartWindow)
+        return occurrenceStart;
+
+    time_t intervalsToSkip = (visibleStartWindow - occurrenceStart) / stepSeconds;
+    occurrenceStart += intervalsToSkip * stepSeconds;
+
+    while (occurrenceStart < visibleStartWindow)
+        occurrenceStart += stepSeconds;
+
+    return occurrenceStart;
 }
 
 time_t startOfWeek(time_t epoch)
@@ -897,7 +932,8 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
         parseRecurrenceRule(recurrenceProperty.found ? recurrenceProperty.value : "", timeZone, recurrence);
 
         ExDateList exDates;
-        collectExDates(eventStart, endEvt, exDates);
+        const time_t exDateVisibleStartWindow = epochFirstDayShown - duration;
+        collectExDates(eventStart, endEvt, exDates, exDateVisibleStartWindow, epochLastDayShown, timeZone);
 
         if (recurrence.frequency == RecurrenceFrequency::None)
         {
@@ -914,8 +950,17 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
             time_t baseDayStart = resetEpochOf(baseStart, false, false, false, true, true, true);
             time_t timeOfDay = baseStart - baseDayStart;
             time_t baseWeekStart = startOfWeek(baseStart);
+            size_t firstWeekIndex = 0;
 
-            for (size_t weekIndex = 0; entriesNum < EventClass::MAX_CALENDAR_EVENTS; ++weekIndex)
+            if (recurrence.count == 0)
+            {
+                time_t visibleStartWindow = epochFirstDayShown - duration;
+                time_t recurrenceStep = (time_t)recurrence.interval * 7 * DAYS_2_SEC;
+                if (recurrenceStep > 0 && visibleStartWindow > baseWeekStart)
+                    firstWeekIndex = (size_t)((visibleStartWindow - baseWeekStart) / recurrenceStep);
+            }
+
+            for (size_t weekIndex = firstWeekIndex; entriesNum < EventClass::MAX_CALENDAR_EVENTS; ++weekIndex)
             {
                 time_t weekStart = baseWeekStart + (time_t)(weekIndex * recurrence.interval * 7) * DAYS_2_SEC;
                 bool finished = false;
@@ -966,6 +1011,14 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
         else
         {
             time_t occurrenceStart = baseStart;
+            if (recurrence.count == 0 &&
+                (recurrence.frequency == RecurrenceFrequency::Daily || recurrence.frequency == RecurrenceFrequency::Weekly))
+            {
+                time_t recurrenceStep = (recurrence.frequency == RecurrenceFrequency::Daily ? 1 : 7) *
+                    (time_t)recurrence.interval * DAYS_2_SEC;
+                occurrenceStart = fastForwardOccurrence(occurrenceStart, epochFirstDayShown - duration, recurrenceStep);
+            }
+
             while (entriesNum < EventClass::MAX_CALENDAR_EVENTS)
             {
                 if (recurrence.hasUntil && occurrenceStart > recurrence.until)
