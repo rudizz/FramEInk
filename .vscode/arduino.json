@@ -1,6 +1,6 @@
 {
     "configuration": "PartitionScheme=huge_app,FlashMode=qio,FlashFreq=80,UploadSpeed=460800,DebugLevel=none",
-    "board": "Inkplate_Boards:esp32:Inkplate6COLOR",
-    "port": "/dev/tty.usbserial-110",
-    "sketch": "FramEink_6Color/FramEink_6Color.ino"
+    "board": "Inkplate_Boards:esp32:Inkplate10",
+    "port": "/dev/cu.usbserial-110",
+    "sketch": "FramEink/FramEink.ino"
 }

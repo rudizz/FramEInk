@@ -11,7 +11,13 @@ class SDPhotoClass
 {
  protected:
 	 Inkplate *display;
-	 bool getFilePath(char* filePath, const char* dirName, uint& counter);
+	 bool getFilePath(
+		 char* filePath,
+		 size_t filePathSize,
+		 const char* dirName,
+		 uint& counter,
+		 uint& availableFileCount);
+	 void showError(const char* message, const char* dirName = nullptr);
 	 bool DEBUG_PRINT = false;
 
  public:

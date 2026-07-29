@@ -25,123 +25,152 @@ SDPhotoClass::SDPhotoClass(Inkplate* _display)
 
 }
 
-bool SDPhotoClass::getFilePath(char* filePath, const char* dirName, uint& counter) {
+bool SDPhotoClass::getFilePath(
+	char* filePath,
+	size_t filePathSize,
+	const char* dirName,
+	uint& counter,
+	uint& availableFileCount)
+{
+	if (filePath == nullptr || filePathSize == 0)
+		return false;
+
+	filePath[0] = 0;
+	availableFileCount = 0;
+
 	File dir;
 	File file;
-	char fileName[100]; // abbastanza grande da contenere un possibile nome lungo del file nella SD
-	if (dir.open(dirName)) {
-		/*error("dir.open failed");*/
-	  // Open next file in root.
-	  // Warning, openNext starts at the current position of dir so a
-	  // rewind may be necessary in your application.
-		int contaCicli = -1;
-		// If counter == -1 -> take Random file
-		int fileCount = 0;
-		if (counter == -1) {
-			dir.rewindDirectory();
-			while (file.openNext(&dir, O_RDONLY)) {
-				if (file.size() > 4096 && !file.isHidden()) {
-					fileCount++;
-				}
-				file.close();
-			}
-			if (DEBUG_PRINT)
-				Serial.printf("fileCount: %d\n", fileCount);
-			counter = random(fileCount);
+	char fileName[100] = {};
 
-			if (DEBUG_PRINT)
-				Serial.printf("Random Index: %d\n", counter);
-		}
-		dir.rewindDirectory();
-		bool fileFounded = false;
-		while (file.openNext(&dir, O_RDONLY)) {
-			if (file.size() > 4096 && !file.isHidden()) // Scarto tutti i file che non sono immagini
-			{
-				++contaCicli;
-				if (counter == contaCicli)
-				{
-					file.getName(fileName, sizeof(fileName));
-					counter++;
-					fileFounded = true;
-					break;
-				}
-			}
-			file.close();
-		}
-		// Se fileFounded = false vuol dire che sono arrivato in fondo alla lista di immagini
-		// quindi resetto il counter.
-		if (!fileFounded)
-		{
-			// Se contaCicli < 0 vuol dire che non sono presenti immagini, quindi esco dal metodo
-			if (contaCicli > -1) {
-				counter = 0;
-				if (DEBUG_PRINT)
-					Serial.println("Azzero contatore");
-				getFilePath(fileName, dirName, counter);
-			} else {
-				return false;
-			}
-		}
-		// Creo il filePath
-		strcpy(filePath, dirName);
-		strcat(filePath, fileName);
+	if (!dir.open(dirName))
+		return false;
 
-		return dir.exists(fileName);
+	dir.rewindDirectory();
+	while (file.openNext(&dir, O_RDONLY))
+	{
+		if (file.size() > 4096 && !file.isHidden())
+			++availableFileCount;
+		file.close();
 	}
-	else {
+
+	if (DEBUG_PRINT)
+		Serial.printf("fileCount: %u\n", availableFileCount);
+
+	if (availableFileCount == 0)
+	{
+		dir.close();
 		return false;
 	}
+
+	const uint selectedIndex =
+		counter == static_cast<uint>(-1)
+			? static_cast<uint>(random(availableFileCount))
+			: counter % availableFileCount;
+
+	if (DEBUG_PRINT)
+		Serial.printf("Photo index: %u\n", selectedIndex);
+
+	dir.rewindDirectory();
+	uint currentIndex = 0;
+	bool fileFound = false;
+	while (file.openNext(&dir, O_RDONLY))
+	{
+		const bool validPhoto = file.size() > 4096 && !file.isHidden();
+		if (validPhoto && currentIndex == selectedIndex)
+		{
+			file.getName(fileName, sizeof(fileName));
+			fileFound = true;
+			file.close();
+			break;
+		}
+
+		if (validPhoto)
+			++currentIndex;
+		file.close();
+	}
+	dir.close();
+
+	if (!fileFound)
+		return false;
+
+	const int written = snprintf(filePath, filePathSize, "%s%s", dirName, fileName);
+	if (written < 0 || static_cast<size_t>(written) >= filePathSize)
+	{
+		filePath[0] = 0;
+		return false;
+	}
+
+	counter = (selectedIndex + 1) % availableFileCount;
+	return true;
+}
+
+void SDPhotoClass::showError(const char* message, const char* dirName)
+{
+	display->setCursor(30, 30);
+	display->setTextColor(0, 7);
+	display->setTextSize(1);
+	display->print(message);
+	if (dirName != nullptr)
+		display->println(dirName);
+	else
+		display->println();
 }
 
 void SDPhotoClass::drawImageFromSD(int x, int y, PhotoOrientation orientation, uint &counter)
 {
-	if (initOk)
+	if (!initOk)
 	{
-		const char *dirName;
-		switch (orientation)
-		{
-		case SDPhotoClass::PhotoOrientation::landscape:
-			dirName = "/landscape/";
-			break;
-
-		case SDPhotoClass::PhotoOrientation::portrait:
-			dirName = "/portrait/";
-			break;
-
-		}
-
-		char filePath[110];
-		bool imageDrawed = false;
-		// se il disegno dell'immagine fallisce, passo all'immagine successiva.
-		while (!imageDrawed)
-		{
-			if (getFilePath(filePath, dirName, counter))
-			{
-				if (DEBUG_PRINT)
-					Serial.println(filePath);
-				if (display->drawImage(filePath, x, y, true, false))
-				{
-					if (DEBUG_PRINT)
-						Serial.println("Draw Image true");
-					imageDrawed = true;
-				}
-				else {
-					if (DEBUG_PRINT)
-						Serial.println("Draw Image false");
-					counter++;
-				}
-			}
-			else
-			{
-				if (DEBUG_PRINT)
-					Serial.println("Warning: image not found!");
-				//Serial.println(new String("Warning: image not found at path: ")->concat(&filePath));
-			}
-		}
+		showError("SD Card error!");
+		return;
 	}
 
+	const char *dirName;
+	switch (orientation)
+	{
+	case SDPhotoClass::PhotoOrientation::landscape:
+		dirName = "/landscape/";
+		break;
+
+	case SDPhotoClass::PhotoOrientation::portrait:
+		dirName = "/portrait/";
+		break;
+	}
+
+	char filePath[112];
+	uint availableFileCount = 0;
+	uint failedAttempts = 0;
+
+	while (true)
+	{
+		if (!getFilePath(filePath, sizeof(filePath), dirName, counter, availableFileCount))
+		{
+			if (DEBUG_PRINT)
+				Serial.println("Warning: image not found!");
+			showError("No valid photos in ", dirName);
+			return;
+		}
+
+		if (DEBUG_PRINT)
+			Serial.println(filePath);
+
+		if (display->drawImage(filePath, x, y, true, false))
+		{
+			if (DEBUG_PRINT)
+				Serial.println("Draw Image true");
+			return;
+		}
+
+		if (DEBUG_PRINT)
+			Serial.println("Draw Image false");
+
+		++failedAttempts;
+		if (failedAttempts >= availableFileCount)
+		{
+			showError("Unable to draw photos in ", dirName);
+			return;
+		}
+	}
 }
 
 
 SDPhotoClass SDPhoto;
-

@@ -1,6 +1,7 @@
 #include "CommonFunctions.h"
 
 #include <cctype>
+#include <cstdint>
 #include <cstdlib>
 
 #pragma region Variables
@@ -102,6 +103,216 @@ struct RecurrenceRule
     int byMonths[12] = {};
     size_t byMonthCount = 0;
 };
+
+const char* asciiForCodepoint(uint32_t codepoint)
+{
+    switch (codepoint)
+    {
+    case 0x00C0: case 0x00C1: case 0x00C2: case 0x00C3: case 0x00C4: case 0x00C5:
+    case 0x0100: case 0x0102: case 0x0104:
+        return "A";
+    case 0x00E0: case 0x00E1: case 0x00E2: case 0x00E3: case 0x00E4: case 0x00E5:
+    case 0x0101: case 0x0103: case 0x0105:
+        return "a";
+    case 0x00C6:
+        return "AE";
+    case 0x00E6:
+        return "ae";
+    case 0x00C7: case 0x0106: case 0x0108: case 0x010A: case 0x010C:
+        return "C";
+    case 0x00E7: case 0x0107: case 0x0109: case 0x010B: case 0x010D:
+        return "c";
+    case 0x00D0: case 0x010E: case 0x0110:
+        return "D";
+    case 0x00F0: case 0x010F: case 0x0111:
+        return "d";
+    case 0x00C8: case 0x00C9: case 0x00CA: case 0x00CB:
+    case 0x0112: case 0x0114: case 0x0116: case 0x0118: case 0x011A:
+        return "E";
+    case 0x00E8: case 0x00E9: case 0x00EA: case 0x00EB:
+    case 0x0113: case 0x0115: case 0x0117: case 0x0119: case 0x011B:
+        return "e";
+    case 0x011C: case 0x011E: case 0x0120: case 0x0122:
+        return "G";
+    case 0x011D: case 0x011F: case 0x0121: case 0x0123:
+        return "g";
+    case 0x0124: case 0x0126:
+        return "H";
+    case 0x0125: case 0x0127:
+        return "h";
+    case 0x00CC: case 0x00CD: case 0x00CE: case 0x00CF:
+    case 0x0128: case 0x012A: case 0x012C: case 0x012E: case 0x0130:
+        return "I";
+    case 0x00EC: case 0x00ED: case 0x00EE: case 0x00EF:
+    case 0x0129: case 0x012B: case 0x012D: case 0x012F: case 0x0131:
+        return "i";
+    case 0x0134:
+        return "J";
+    case 0x0135:
+        return "j";
+    case 0x0136:
+        return "K";
+    case 0x0137:
+        return "k";
+    case 0x0139: case 0x013B: case 0x013D: case 0x013F: case 0x0141:
+        return "L";
+    case 0x013A: case 0x013C: case 0x013E: case 0x0140: case 0x0142:
+        return "l";
+    case 0x00D1: case 0x0143: case 0x0145: case 0x0147:
+        return "N";
+    case 0x00F1: case 0x0144: case 0x0146: case 0x0148:
+        return "n";
+    case 0x00D2: case 0x00D3: case 0x00D4: case 0x00D5: case 0x00D6: case 0x00D8:
+    case 0x014C: case 0x014E: case 0x0150:
+        return "O";
+    case 0x00F2: case 0x00F3: case 0x00F4: case 0x00F5: case 0x00F6: case 0x00F8:
+    case 0x014D: case 0x014F: case 0x0151:
+        return "o";
+    case 0x0152:
+        return "OE";
+    case 0x0153:
+        return "oe";
+    case 0x0154: case 0x0156: case 0x0158:
+        return "R";
+    case 0x0155: case 0x0157: case 0x0159:
+        return "r";
+    case 0x015A: case 0x015C: case 0x015E: case 0x0160:
+        return "S";
+    case 0x015B: case 0x015D: case 0x015F: case 0x0161:
+        return "s";
+    case 0x00DF:
+        return "ss";
+    case 0x0162: case 0x0164: case 0x0166:
+        return "T";
+    case 0x0163: case 0x0165: case 0x0167:
+        return "t";
+    case 0x00D9: case 0x00DA: case 0x00DB: case 0x00DC:
+    case 0x0168: case 0x016A: case 0x016C: case 0x016E: case 0x0170: case 0x0172:
+        return "U";
+    case 0x00F9: case 0x00FA: case 0x00FB: case 0x00FC:
+    case 0x0169: case 0x016B: case 0x016D: case 0x016F: case 0x0171: case 0x0173:
+        return "u";
+    case 0x0174:
+        return "W";
+    case 0x0175:
+        return "w";
+    case 0x00DD: case 0x0176: case 0x0178:
+        return "Y";
+    case 0x00FD: case 0x00FF: case 0x0177:
+        return "y";
+    case 0x0179: case 0x017B: case 0x017D:
+        return "Z";
+    case 0x017A: case 0x017C: case 0x017E:
+        return "z";
+    case 0x00DE:
+        return "Th";
+    case 0x00FE:
+        return "th";
+    case 0x00A0:
+        return " ";
+    case 0x00AB:
+        return "\"";
+    case 0x00B0:
+        return " deg ";
+    case 0x00B4:
+        return "'";
+    case 0x00BB:
+        return "\"";
+    case 0x2018: case 0x2019: case 0x201A: case 0x201B:
+        return "'";
+    case 0x201C: case 0x201D: case 0x201E: case 0x201F:
+        return "\"";
+    case 0x2010: case 0x2011: case 0x2012: case 0x2013: case 0x2014: case 0x2212:
+        return "-";
+    case 0x2022:
+        return "*";
+    case 0x2026:
+        return "...";
+    default:
+        if (codepoint >= 0x0300 && codepoint <= 0x036F)
+            return "";
+        return "?";
+    }
+}
+
+bool decodeUtf8Codepoint(const char* source, size_t& index, uint32_t& codepoint)
+{
+    const unsigned char first = static_cast<unsigned char>(source[index]);
+    if (first < 0x80)
+    {
+        codepoint = first;
+        return true;
+    }
+
+    size_t continuationCount = 0;
+    uint32_t value = 0;
+    if ((first & 0xE0) == 0xC0)
+    {
+        continuationCount = 1;
+        value = first & 0x1F;
+    }
+    else if ((first & 0xF0) == 0xE0)
+    {
+        continuationCount = 2;
+        value = first & 0x0F;
+    }
+    else if ((first & 0xF8) == 0xF0)
+    {
+        continuationCount = 3;
+        value = first & 0x07;
+    }
+    else
+    {
+        return false;
+    }
+
+    for (size_t offset = 1; offset <= continuationCount; ++offset)
+    {
+        const unsigned char next = static_cast<unsigned char>(source[index + offset]);
+        if (next == 0 || (next & 0xC0) != 0x80)
+            return false;
+        value = (value << 6) | (next & 0x3F);
+    }
+
+    index += continuationCount;
+    codepoint = value;
+    return true;
+}
+
+const char* asciiForLegacyByte(unsigned char value)
+{
+    if (value >= 0xC0)
+        return asciiForCodepoint(value);
+
+    switch (value)
+    {
+    case 0x80:
+        return "EUR";
+    case 0x82:
+        return ",";
+    case 0x84:
+        return "\"";
+    case 0x91: case 0x92:
+        return "'";
+    case 0x93: case 0x94:
+        return "\"";
+    case 0x96: case 0x97:
+        return "-";
+    case 0x85:
+        return "...";
+    default:
+        return "?";
+    }
+}
+
+void appendReplacement(const char* replacement, char* destination, size_t destinationSize, size_t& outIndex)
+{
+    if (replacement == nullptr)
+        return;
+
+    for (size_t replacementIndex = 0; replacement[replacementIndex] != 0 && outIndex + 1 < destinationSize; ++replacementIndex)
+        destination[outIndex++] = replacement[replacementIndex];
+}
 
 const char* findLineEnd(const char* start, const char* limit)
 {
@@ -279,11 +490,22 @@ void decodeIcalText(const char* source, char* destination, size_t destinationSiz
         }
 
         if (source[index] != '\r' && source[index] != '\n')
-            destination[outIndex++] = source[index];
+        {
+            const unsigned char current = static_cast<unsigned char>(source[index]);
+            if (current < 0x80)
+            {
+                destination[outIndex++] = source[index];
+                continue;
+            }
+
+            uint32_t codepoint = 0;
+            const bool decoded = decodeUtf8Codepoint(source, index, codepoint);
+            const char* replacement = decoded ? asciiForCodepoint(codepoint) : asciiForLegacyByte(current);
+            appendReplacement(replacement, destination, destinationSize, outIndex);
+        }
     }
 
     destination[outIndex] = 0;
-    correggiApostrofo(destination, outIndex);
     correggiCarriageReturn(destination, outIndex);
 }
 

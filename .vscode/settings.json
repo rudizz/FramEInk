@@ -1,1 +1,5 @@
-{}
+{
+    "arduino.useArduinoCli": true,
+    "arduino.path": "/Applications/Arduino IDE.app/Contents/Resources/app/lib/backend/resources",
+    "arduino.commandPath": "arduino-cli"
+}

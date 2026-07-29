@@ -21,7 +21,7 @@ const bool DEBUG = true;
 static frameink::ApplicationRuntime makeInitialRuntimeState()
 {
     frameink::ApplicationRuntime runtime;
-    runtime.settingsOk = true; // true: skip settings portal at first start, false: show settings portal at first start
+    runtime.settingsOk = false; // true: skip settings portal at first start, false: show settings portal at first start
     runtime.stateCalendar = true; // true: show calendar dashboard, false: show photo at first start
     runtime.timeZoneSeconds = 0;
     runtime.sleepMinutes = 60ll;

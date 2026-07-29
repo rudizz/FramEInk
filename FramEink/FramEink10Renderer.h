@@ -146,6 +146,7 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
         currentTimeZoneSeconds_ = model.weather.timeZoneSeconds;
         display_.clearDisplay();
 
+        drawBattery();
         if (model.hasCalendar)
             drawCalendarName(model.calendar);
         drawGrid();
@@ -233,6 +234,15 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
         dateTime[16] = 0;
         display_.println(dateTime);
         dateTime[16] = t;
+    }
+
+    void drawBattery()
+    {
+        display_.setTextColor(0, 7);
+        display_.setFont(&FreeSans12pt7b);
+        display_.setTextSize(1);
+        display_.setCursor(width_ - marginRight_ - 50, marginUp_ + 22);
+        display_.println(display_.readBattery());
     }
 
     void drawCalendarSize(const frameink::CalendarAgenda &calendar)
@@ -492,7 +502,7 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
         uint16_t wMax, wMin, h;
         display_.getTextBounds(day.maximumTemperature, 0, 0, &x1, &y1, &wMax, &h);
         display_.getTextBounds(day.minimumTemperature, 0, 0, &x1, &y1, &wMin, &h);
-        display_.drawBitmap3Bit(x + max(wMax, wMin) * 2, y - 28, termometro, termometro_w, termometro_h);
+        display_.drawBitmap3Bit(x + max(wMax, wMin), y - 28, termometro, termometro_w, termometro_h);
     }
 
     void drawSunriseSunsetTime(int x, int y, const frameink::WeatherDayForecast &day)

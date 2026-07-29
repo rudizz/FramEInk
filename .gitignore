@@ -76,6 +76,8 @@ StyleCopReport.xml
 *_i.c
 *_p.c
 *_h.h
+!FramEink/binary_Icons/icon_H.h
+!FramEink/binary_Icons/icon_S_H.h
 *.ilk
 *.meta
 *.obj

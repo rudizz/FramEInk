@@ -38,7 +38,7 @@ static frameink::RefreshPolicy makeRefreshPolicy()
     return policy;
 }
 
-RTC_DATA_ATTR frameink::ApplicationRuntime runtimeState = makeInitialRuntimeState();
+RTC_DATA_ATTR frameink::ApplicationRuntime runtimeState;
 
 frameink::NetworkConfiguration networkConfiguration;
 Network network(&networkConfiguration);
@@ -57,6 +57,10 @@ void setup()
         Serial.begin(115200);
         Serial.println("Inizializzo...");
     }
+
+    const esp_sleep_wakeup_cause_t wakeupCause = esp_sleep_get_wakeup_cause();
+    if (wakeupCause == ESP_SLEEP_WAKEUP_UNDEFINED)
+        runtimeState = makeInitialRuntimeState();
 
     if (settingsService == nullptr)
         settingsService = new frameink::PortalSettingsService();
