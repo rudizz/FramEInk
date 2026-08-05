@@ -238,11 +238,39 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
 
     void drawBattery()
     {
+        const float batteryVoltage = display_.readBattery();
+        const float emptyBatteryVoltage = 3.70f;
+        const float fullBatteryVoltage = 4.16f;
+        float batteryLevel = (batteryVoltage - emptyBatteryVoltage) / (fullBatteryVoltage - emptyBatteryVoltage);
+        if (batteryLevel < 0.0f)
+            batteryLevel = 0.0f;
+        else if (batteryLevel > 1.0f)
+            batteryLevel = 1.0f;
+
+        const int batteryBodyWidth = 34;
+        const int batteryBodyHeight = 16;
+        const int batteryTerminalWidth = 4;
+        const int batteryTerminalHeight = 8;
+        const int batteryTextX = width_ - marginRight_ - 50;
+        const int batteryX = batteryTextX - batteryBodyWidth - batteryTerminalWidth - 10;
+        const int batteryY = marginUp_ + 4;
+        const int batteryFillWidth = static_cast<int>(roundf(batteryLevel * (batteryBodyWidth - 4)));
+
+        display_.drawRect(batteryX, batteryY, batteryBodyWidth, batteryBodyHeight, 0);
+        display_.fillRect(
+            batteryX + batteryBodyWidth,
+            batteryY + (batteryBodyHeight - batteryTerminalHeight) / 2,
+            batteryTerminalWidth,
+            batteryTerminalHeight,
+            0);
+        if (batteryFillWidth > 0)
+            display_.fillRect(batteryX + 2, batteryY + 2, batteryFillWidth, batteryBodyHeight - 4, 0);
+
         display_.setTextColor(0, 7);
         display_.setFont(&FreeSans12pt7b);
         display_.setTextSize(1);
-        display_.setCursor(width_ - marginRight_ - 50, marginUp_ + 22);
-        display_.println(display_.readBattery());
+        display_.setCursor(batteryTextX, marginUp_ + 22);
+        display_.println(batteryVoltage, 2);
     }
 
     void drawCalendarSize(const frameink::CalendarAgenda &calendar)
@@ -489,20 +517,25 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
         return x + w;
     }
 
-    void drawWeatherTemp(int x, int y, const frameink::WeatherDayForecast &day)
+    void drawWeatherTemp(int x, int y, int thermometerX, const frameink::WeatherDayForecast &day)
     {
+        const int thermometerGap = 8;
+        int16_t xMaxBounds, yMaxBounds, xMinBounds, yMinBounds;
+        uint16_t wMax, hMax, wMin, hMin;
+
         display_.setFont(&FreeSans18pt7b);
-        display_.setCursor(x, y + 2);
+        display_.getTextBounds(day.maximumTemperature, 0, 0, &xMaxBounds, &yMaxBounds, &wMax, &hMax);
+        display_.getTextBounds(day.minimumTemperature, 0, 0, &xMinBounds, &yMinBounds, &wMin, &hMin);
+
+        const int xTempMax = min(x, thermometerX - thermometerGap - xMaxBounds - static_cast<int>(wMax));
+        const int xTempMin = min(x, thermometerX - thermometerGap - xMinBounds - static_cast<int>(wMin));
+
+        display_.setCursor(xTempMax, y + 2);
         display_.print(day.maximumTemperature);
-        display_.setFont(&FreeSans18pt7b);
-        display_.setCursor(x, y + 38);
+        display_.setCursor(xTempMin, y + 38);
         display_.print(day.minimumTemperature);
 
-        int16_t x1, y1;
-        uint16_t wMax, wMin, h;
-        display_.getTextBounds(day.maximumTemperature, 0, 0, &x1, &y1, &wMax, &h);
-        display_.getTextBounds(day.minimumTemperature, 0, 0, &x1, &y1, &wMin, &h);
-        display_.drawBitmap3Bit(x + max(wMax, wMin), y - 28, termometro, termometro_w, termometro_h);
+        display_.drawBitmap3Bit(thermometerX, y - 28, termometro, termometro_w, termometro_h);
     }
 
     void drawSunriseSunsetTime(int x, int y, const frameink::WeatherDayForecast &day)
@@ -561,8 +594,10 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
             drawWeatherIcon(xBegin, yBegin + 5, day);
             const int yWeatherLabel = yBegin + headerWeather_ - 4;
             drawWeatherLabel(xBegin, yWeatherLabel, day);
-            drawWeatherTemp(xBegin + iconWeatherHeight_ + 12, yBegin + 40, day);
-            drawSunriseSunsetTime(xBegin + iconWeatherHeight_ + 100, yBegin + 10, day);
+            const int sunsetTimeX = xBegin + iconWeatherHeight_ + 100;
+            const int thermometerX = sunsetTimeX - termometro_w - 8;
+            drawWeatherTemp(xBegin + iconWeatherHeight_ + 12, yBegin + 40, thermometerX, day);
+            drawSunriseSunsetTime(sunsetTimeX, yBegin + 10, day);
 
             if (day.hasPrecipitation)
                 drawProbabilityOfRain(xBegin + iconWeatherHeight_ + 8, yWeatherLabel - 19, day);

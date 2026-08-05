@@ -218,6 +218,10 @@ long Network::getDataCalendar(char *data)
 // ====  WEATHER  =====
 void formatTemp(char *str, float temp)
 {
+    // Avoid displaying a negative zero when a small negative value rounds to 0.
+    if (temp > -0.5f && temp < 0.0f)
+        temp = 0.0f;
+
     // Built in function for float to char* conversion
     dtostrf(temp, 2, 0, str);
 }

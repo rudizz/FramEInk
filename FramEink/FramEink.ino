@@ -52,6 +52,9 @@ frameink::ApplicationController *appController = nullptr;
 
 void setup()
 {
+    // Unlike the wall clock, millis() is not affected by the first NTP synchronization.
+    const unsigned long cycleStartedMilliseconds = millis();
+
     if (DEBUG)
     {
         Serial.begin(115200);
@@ -79,12 +82,15 @@ void setup()
     const frameink::RefreshResult refreshResult = appController->executeCycle(runtimeState, *renderer);
     renderer->present();
 
-    long long computationTime = 0;
-    const time_t endEpoch = network.getNowEpoch(false);
-    if (refreshResult.startedEpoch > 0)
-        computationTime = static_cast<long long>(endEpoch - refreshResult.startedEpoch) * SEC_2_MICROSEC;
+    const long long requestedSleepTime = refreshResult.sleepMinutes * MIN_2_MICROSEC;
+    const long long computationTime =
+        static_cast<long long>(millis() - cycleStartedMilliseconds) * 1000ll;
+    const long long sleepTime =
+        computationTime < requestedSleepTime
+            ? requestedSleepTime - computationTime
+            : requestedSleepTime;
 
-    esp_sleep_enable_timer_wakeup(refreshResult.sleepMinutes * MIN_2_MICROSEC - computationTime);
+    esp_sleep_enable_timer_wakeup(sleepTime);
     (void)esp_deep_sleep_start();
 }
 
