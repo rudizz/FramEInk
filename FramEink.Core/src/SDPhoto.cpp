@@ -3,6 +3,26 @@
 // 
 
 #include "SDPhoto.h"
+#include "InkplateImageCompat.h"
+#include <strings.h>
+
+namespace {
+
+bool isPhoto(SdFile &file)
+{
+    if (!file.isFile() || file.fileSize() == 0 || file.isHidden())
+        return false;
+    char name[100];
+    file.getName(name, sizeof(name));
+    if (name[0] == '.')
+        return false;
+    const char *extension = strrchr(name, '.');
+    return extension != nullptr &&
+        (strcasecmp(extension, ".jpg") == 0 || strcasecmp(extension, ".jpeg") == 0 ||
+         strcasecmp(extension, ".png") == 0 || strcasecmp(extension, ".bmp") == 0);
+}
+
+} // namespace
 
 SDPhotoClass::SDPhotoClass()
 {
@@ -38,17 +58,17 @@ bool SDPhotoClass::getFilePath(
 	filePath[0] = 0;
 	availableFileCount = 0;
 
-	File dir;
-	File file;
+	SdFile dir;
+	SdFile file;
 	char fileName[100] = {};
 
 	if (!dir.open(dirName))
 		return false;
 
-	dir.rewindDirectory();
+	dir.rewind();
 	while (file.openNext(&dir, O_RDONLY))
 	{
-		if (file.size() > 4096 && !file.isHidden())
+        if (isPhoto(file))
 			++availableFileCount;
 		file.close();
 	}
@@ -70,12 +90,12 @@ bool SDPhotoClass::getFilePath(
 	if (DEBUG_PRINT)
 		Serial.printf("Photo index: %u\n", selectedIndex);
 
-	dir.rewindDirectory();
+	dir.rewind();
 	uint currentIndex = 0;
 	bool fileFound = false;
 	while (file.openNext(&dir, O_RDONLY))
 	{
-		const bool validPhoto = file.size() > 4096 && !file.isHidden();
+        const bool validPhoto = isPhoto(file);
 		if (validPhoto && currentIndex == selectedIndex)
 		{
 			file.getName(fileName, sizeof(fileName));
@@ -153,7 +173,7 @@ void SDPhotoClass::drawImageFromSD(int x, int y, PhotoOrientation orientation, u
 		if (DEBUG_PRINT)
 			Serial.println(filePath);
 
-		if (display->drawImage(filePath, x, y, true, false))
+		if (frameink::drawImage(*display, filePath, x, y, true, false))
 		{
 			if (DEBUG_PRINT)
 				Serial.println("Draw Image true");

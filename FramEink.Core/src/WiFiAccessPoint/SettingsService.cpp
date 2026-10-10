@@ -2,6 +2,11 @@
 
 namespace frameink {
 
+void PortalSettingsService::configurePhotoUpload(const PhotoUploadTarget &target)
+{
+    portal_.configurePhotoUpload(target);
+}
+
 void PortalSettingsService::beginPortal()
 {
     portal_.initAP();
@@ -37,6 +42,11 @@ const char *PortalSettingsService::accessPointSsid() const
 IPAddress PortalSettingsService::accessPointIp() const
 {
     return portal_.serverIP;
+}
+
+const char *PortalSettingsService::accessPointPassword() const
+{
+    return portal_.passwordAP;
 }
 
 uint16_t PortalSettingsService::accessPointDurationMinutes() const

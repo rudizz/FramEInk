@@ -14,6 +14,7 @@ class IDeviceConfigurationProvider
     virtual DeviceConfiguration currentConfiguration() const = 0;
     virtual DeviceConfiguration ensureLoaded(bool &settingsOk) = 0;
     virtual const char *accessPointSsid() const = 0;
+    virtual const char *accessPointPassword() const { return ""; }
     virtual IPAddress accessPointIp() const = 0;
     virtual uint16_t accessPointDurationMinutes() const = 0;
 };
@@ -23,11 +24,13 @@ class PortalSettingsService : public IDeviceConfigurationProvider
   public:
     PortalSettingsService() = default;
 
+    void configurePhotoUpload(const PhotoUploadTarget &target);
     void beginPortal() override;
     void waitUntilConfigured() override;
     DeviceConfiguration currentConfiguration() const override;
     DeviceConfiguration ensureLoaded(bool &settingsOk) override;
     const char *accessPointSsid() const override;
+    const char *accessPointPassword() const override;
     IPAddress accessPointIp() const override;
     uint16_t accessPointDurationMinutes() const override;
 

@@ -1,158 +1,168 @@
-// 
-// 
-// 
-
 #include "WiFiAPSettings.h"
-#include "HTMLSettingsPage.h"   //Include .h file where we stored out html code of our web page
-
-//#define ssid "FramEInk"
-
-WebServer server(80); // Create Web server on port 80 (HTTP port number)
-
-bool settingsDone;
-String User_SSID;
-String User_PWD;
-String User_Latitude;
-String User_Longitude;
-String User_ICALID;
+#include <ArduinoJson.h>
+#include <cmath>
 
 WiFiAPSettingsClass::WiFiAPSettingsClass()
 {
-    // Init EEPROM library with 512 of EEPROM size. Do not change this value, it can wipe waveform data!
-    EEPROM.begin(512);
-    if (DEBUG_PRINT)
-        Serial.println("begin...");
-
-    // Leggo i parametri dalla eeprom
+    EEPROM.begin(EEPROM_SIZE);
     readEEPROM();
-    // Copy the settings parameters to public variables
-    SSID_User = User_SSID;
-    PWD_User = User_PWD;
-    Latitude_User = User_Latitude;
-    Longitude_User = User_Longitude;
-    ICALID_User = User_ICALID;
-    if (DEBUG_PRINT)
-        Serial.println("readed EEPROM...");
+}
+
+void WiFiAPSettingsClass::configurePhotoUpload(const frameink::PhotoUploadTarget &target)
+{
+    photos_.configure(target);
 }
 
 void WiFiAPSettingsClass::initAP()
 {
-    // Carico i parametri nella pagina HTML che viene visualizzata all'utente
-    insertParamInHTMLPage(String("'SSID'>"), String(User_SSID));
-    insertParamInHTMLPage(String("'password'>"), String(User_PWD));
-    insertParamInHTMLPage(String("'latitude'>"), String(User_Latitude));
-    insertParamInHTMLPage(String("'longitude'>"), String(User_Longitude));
-    insertParamInHTMLPage(String("'icalID'>"), String(User_ICALID));
+    WiFi.mode(WIFI_AP);
+    // Only someone who can read the frame may access photos and saved settings.
+    // Shortest supported WPA2 passphrase; 6 characters would prevent AP startup.
+    snprintf(passwordAP, sizeof(passwordAP), "%08lx",
+        static_cast<unsigned long>(esp_random()));
+    WiFi.softAP(SSID_AP_Settings, passwordAP);
+    serverIP = WiFi.softAPIP();
+    settingsDone_ = false;
 
-    WiFi.begin();            // Init. WiFi library
-    WiFi.mode(WIFI_AP);      // Set WiFi to Access point mode
-    WiFi.softAP(SSID_AP_Settings); // Set SSID (WiFi name) and password for Access point
-
-    serverIP = WiFi.softAPIP(); // Get the server IP address
-
-    settingsDone = false;
-    server.on("/", this->handleRoot); // If you open homepage, go to handle root function
-    server.on(UriBraces("/string/{}"), handleString); // If you send some text to Inkplate, go to handleString function. Note that {} brackets at
-    // the end of address. That means that web address has some arguments (our text!).
-    server.begin();          // Start the web server
+    photos_.begin(server_);
+    server_.on("/api/settings", HTTP_GET, [this]() { sendSettings(); });
+    server_.on("/api/settings", HTTP_POST, [this]() { saveSettings(); });
+    server_.on("/api/finish", HTTP_POST, [this]() { finish(); });
+    server_.begin();
 }
-
-void WiFiAPSettingsClass::insertParamInHTMLPage(String paramText, String paramValue)
-{
-    strHTML.replace(paramText, paramText + paramValue);
-}
-
 
 void WiFiAPSettingsClass::loop()
 {
-    unsigned long t0 = millis();
-    while (!settingsDone && millis() - t0 < settingDuration * 60 * 1000)
+    const unsigned long idleTimeout = static_cast<unsigned long>(settingDuration) * 60000ul;
+    // Chunks and phone heartbeats refresh activity. A stalled/malformed upload
+    // must still time out, rather than keeping the frame awake indefinitely.
+    while (!settingsDone_ && millis() - photos_.lastActivity() < idleTimeout)
     {
-        server.handleClient(); // You have to constantly read if there is any new client connected to web server
-        delay(1); // Feed the watchdog while waiting on the captive portal.
+        server_.handleClient();
+        delay(1);
     }
-    // Copy the settings parameters to public variables
-    SSID_User = User_SSID;
-    PWD_User = User_PWD;
-    Latitude_User = User_Latitude;
-    Longitude_User = User_Longitude;
-    ICALID_User = User_ICALID;
-    // TODO: aggiornare la pagina strOKHTML per confermare la ricezione dei parametri
+    photos_.end();
+    server_.stop();
+    WiFi.softAPdisconnect(true);
 }
 
-void WiFiAPSettingsClass::updateHTML()
-{ // This function will send response to client and send HTML code of our web page
-    server.send(200, "text/html", strHTML);
-}
-
-void WiFiAPSettingsClass::handleRoot()
-{ // This function will send response to client if client open a root (homepage) of our web page
-    updateHTML();
-}
-
-void WiFiAPSettingsClass::handleString()
-{ // This function will send response to client, send HTML code of web page, get the text from argument sent in web page
-    // address and refresh screen with new text
-    
-    User_SSID = server.arg(0);
-    User_PWD = server.arg(1);
-    User_Latitude = server.arg(2);
-    User_Longitude = server.arg(3);
-    User_ICALID = server.arg(4);
-
-    User_Latitude.replace(',', '.');
-    User_Longitude.replace(',', '.');
-    //updateHTML();
-    writeEEPROM();
-    settingsDone = true;
-}
-
-void WiFiAPSettingsClass::writeEEPROM()
+void WiFiAPSettingsClass::sendSettings()
 {
-    // TODO: controllare la lunghezza delle stringhe che non sia > 255 e che il totale non ecceda la dimensione della eeprom
-    int str1AddrOffset = writeStringToEEPROM(EEPROM_START_ADDR, User_SSID);
-    int str2AddrOffset = writeStringToEEPROM(str1AddrOffset, User_PWD);
-    int str3AddrOffset = writeStringToEEPROM(str2AddrOffset, User_Latitude);
-    int str4AddrOffset = writeStringToEEPROM(str3AddrOffset, User_Longitude);
-    int str5AddrOffset = writeStringToEEPROM(str4AddrOffset, User_ICALID);
-    EEPROM.commit();
+    photos_.touch();
+    JsonDocument document;
+    document["ssid"] = SSID_User;
+    document["password"] = PWD_User;
+    document["latitude"] = Latitude_User;
+    document["longitude"] = Longitude_User;
+    document["calendarUrl"] = ICALID_User;
+    String body;
+    serializeJson(document, body);
+    server_.sendHeader("Cache-Control", "no-store");
+    server_.send(200, "application/json", body);
 }
 
-void WiFiAPSettingsClass::readEEPROM() {
-    int newStr1AddrOffset = readStringFromEEPROM(EEPROM_START_ADDR, &User_SSID);
-    int newStr2AddrOffset = readStringFromEEPROM(newStr1AddrOffset, &User_PWD);
-    int newStr3AddrOffset = readStringFromEEPROM(newStr2AddrOffset, &User_Latitude);
-    int newStr4AddrOffset = readStringFromEEPROM(newStr3AddrOffset, &User_Longitude);
-    int newStr5AddrOffset = readStringFromEEPROM(newStr4AddrOffset, &User_ICALID);
-}
-
-int WiFiAPSettingsClass::writeStringToEEPROM(int addrOffset, const String& strToWrite)
+void WiFiAPSettingsClass::saveSettings()
 {
-    byte len = strToWrite.length();
-    EEPROM.write(addrOffset, len);
-    for (int i = 0; i < len; i++)
+    photos_.touch();
+    String ssid = server_.arg("ssid");
+    String password = server_.arg("password");
+    String latitude = server_.arg("latitude");
+    String longitude = server_.arg("longitude");
+    String calendar = server_.arg("calendarUrl");
+    latitude.replace(',', '.');
+    longitude.replace(',', '.');
+    char *latitudeEnd = nullptr;
+    char *longitudeEnd = nullptr;
+    const double lat = strtod(latitude.c_str(), &latitudeEnd);
+    const double lon = strtod(longitude.c_str(), &longitudeEnd);
+    const size_t size = 5 + ssid.length() + password.length() + latitude.length() + longitude.length() + calendar.length();
+
+    if (ssid.length() == 0 || ssid.length() > 32 || password.length() > 63 ||
+        latitude.length() == 0 || longitude.length() == 0 ||
+        *latitudeEnd != '\0' || *longitudeEnd != '\0' ||
+        !std::isfinite(lat) || !std::isfinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180 ||
+        calendar.length() > 250 || size > EEPROM_SIZE)
     {
-        EEPROM.write(addrOffset + 1 + i, strToWrite[i]);
+        server_.send(400, "text/plain; charset=utf-8", "Check the WiFi name, password, coordinates and calendar URL length.");
+        return;
     }
-    return addrOffset + 1 + len;
-}
-int WiFiAPSettingsClass::readStringFromEEPROM(int addrOffset, String* strToRead)
-{
-    int newStrLen = EEPROM.read(addrOffset);
-    //Serial.printf("Length EEPROM READ: %d\n", newStrLen);
-    // If the array was not initialized, return
-    if (newStrLen == 255)
-        return 0;
 
-    char data[255];
-    if (addrOffset + newStrLen >= EEPROM_SIZE)
-        return -1;
-    for (int i = 0; i < newStrLen; i++)
+    const String previous[] = {SSID_User, PWD_User, Latitude_User, Longitude_User, ICALID_User};
+    SSID_User = ssid;
+    PWD_User = password;
+    Latitude_User = latitude;
+    Longitude_User = longitude;
+    ICALID_User = calendar;
+    if (!writeEEPROM())
     {
-        data[i] = EEPROM.read(addrOffset + 1 + i);
+        SSID_User = previous[0];
+        PWD_User = previous[1];
+        Latitude_User = previous[2];
+        Longitude_User = previous[3];
+        ICALID_User = previous[4];
+        server_.send(500, "text/plain; charset=utf-8", "Unable to save the settings.");
+        return;
     }
-    data[newStrLen] = '\0';
-    *strToRead = String(data);
-    //Serial.printf("EEPROM Read: %s\n", * strToRead);
-    return addrOffset + 1 + newStrLen;
+    // Saving settings keeps the portal open so photos can be uploaded afterwards.
+    server_.send(200, "text/plain; charset=utf-8", "Settings saved. You can upload photos or tap Finish.");
+}
+
+void WiFiAPSettingsClass::finish()
+{
+    photos_.touch();
+    if (photos_.busy())
+    {
+        server_.send(409, "text/plain; charset=utf-8", "Wait until the photo upload is complete.");
+        return;
+    }
+    if (SSID_User.length() == 0)
+    {
+        server_.send(400, "text/plain; charset=utf-8", "Save the WiFi settings first.");
+        return;
+    }
+    server_.send(200, "text/plain; charset=utf-8", "All done. FramEInk will display the calendar and go to sleep.");
+    settingsDone_ = true;
+}
+
+bool WiFiAPSettingsClass::writeEEPROM()
+{
+    int offset = EEPROM_START_ADDR;
+    const String *values[] = {&SSID_User, &PWD_User, &Latitude_User, &Longitude_User, &ICALID_User};
+    for (const String *value : values)
+    {
+        EEPROM.write(offset++, value->length());
+        for (size_t i = 0; i < value->length(); ++i)
+            EEPROM.write(offset++, (*value)[i]);
+    }
+    return EEPROM.commit();
+}
+
+bool WiFiAPSettingsClass::readStringFromEEPROM(int &offset, String &value)
+{
+    if (offset < EEPROM_START_ADDR || offset >= EEPROM_SIZE)
+        return false;
+    const int length = EEPROM.read(offset++);
+    if (length == 255 || offset + length > EEPROM_SIZE)
+        return false;
+    value = "";
+    value.reserve(length);
+    for (int i = 0; i < length; ++i)
+        value += static_cast<char>(EEPROM.read(offset++));
+    return true;
+}
+
+void WiFiAPSettingsClass::readEEPROM()
+{
+    int offset = EEPROM_START_ADDR;
+    String values[5];
+    for (String &value : values)
+    {
+        if (!readStringFromEEPROM(offset, value))
+            return;
+    }
+    SSID_User = values[0];
+    PWD_User = values[1];
+    Latitude_User = values[2];
+    Longitude_User = values[3];
+    ICALID_User = values[4];
 }

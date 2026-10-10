@@ -5,7 +5,6 @@
 
 #include "arduino.h"
 #include <Inkplate.h>
-#include <SdFat.h>
 
 class SDPhotoClass
 {

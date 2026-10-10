@@ -56,6 +56,9 @@ frameink::ApplicationController *appController = nullptr;
 
 void setup()
 {
+    // NTP can change the wall clock during the first settings/photo-upload cycle.
+    const unsigned long cycleStartedMilliseconds = millis();
+
     if (DEBUG)
     {
         Serial.begin(115200);
@@ -80,15 +83,19 @@ void setup()
             refreshPolicy);
 
     renderer->begin();
+    settingsService->configurePhotoUpload(renderer->photoUploadTarget());
     const frameink::RefreshResult refreshResult = appController->executeCycle(runtimeState, *renderer);
     renderer->present();
 
-    long long computationTime = 0;
-    const time_t endEpoch = network.getNowEpoch(false);
-    if (refreshResult.startedEpoch > 0)
-        computationTime = static_cast<long long>(endEpoch - refreshResult.startedEpoch + 1) * SEC_2_MICROSEC;
+    const long long requestedSleepTime = refreshResult.sleepMinutes * MIN_2_MICROSEC;
+    const long long computationTime =
+        static_cast<long long>(millis() - cycleStartedMilliseconds) * 1000ll;
+    const long long sleepTime =
+        computationTime < requestedSleepTime
+            ? requestedSleepTime - computationTime
+            : requestedSleepTime;
 
-    esp_sleep_enable_timer_wakeup(refreshResult.sleepMinutes * MIN_2_MICROSEC - computationTime);
+    esp_sleep_enable_timer_wakeup(sleepTime);
     (void)esp_deep_sleep_start();
 }
 

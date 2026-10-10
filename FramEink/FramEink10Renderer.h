@@ -3,6 +3,7 @@
 #include <ApplicationController.h>
 #include <CommonFunctions.h>
 #include <SDPhoto.h>
+#include <InkplateImageCompat.h>
 
 #include "Inkplate.h"
 #include "fonts.h"
@@ -52,6 +53,18 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
         display_.display();
     }
 
+    frameink::PhotoUploadTarget photoUploadTarget()
+    {
+        frameink::PhotoUploadTarget target;
+        target.name = "FramEInk 10";
+        target.width = display_.width();
+        target.height = display_.height();
+        target.directory = "/portrait";
+        target.grayscale = true;
+        target.storage = sdPhoto_ != nullptr && sdPhoto_->initOk ? &display_.getSdFat() : nullptr;
+        return target;
+    }
+
     void renderSettingsPortal(const frameink::IDeviceConfigurationProvider &settings) override
     {
         display_.clearDisplay();
@@ -67,7 +80,7 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
         for (size_t row = y1 + 4; row < static_cast<size_t>(y2 - 4); row += light_gray_h)
         {
             for (size_t col = x1 + 4; col < static_cast<size_t>(x2 - 4); col += light_gray_w)
-                display_.drawBitmap3Bit(col, row, light_gray, light_gray_w, light_gray_h);
+                frameink::drawBitmap3Bit(display_, col, row, light_gray, light_gray_w, light_gray_h);
         }
         drawCentreString("SETTINGS", width_ / 2, 100);
         const uint8_t thick = 5;
@@ -77,11 +90,18 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
         display_.setFont(&FreeSans18pt7b);
         display_.setTextColor(2);
         display_.setCursor(x1, 260);
-        display_.print("1. Connect to ");
+        display_.print("1. ");
+        const int connectX = display_.getCursorX();
+        display_.print("Connect to ");
         display_.setTextColor(0);
         display_.print(settings.accessPointSsid());
         display_.setTextColor(2);
         display_.println(" WiFi");
+
+        display_.setCursor(connectX, 310);
+        display_.print("Password: ");
+        display_.setTextColor(0);
+        display_.print(settings.accessPointPassword());
 
         display_.setCursor(x1, 370);
         display_.println("2. Open your web browser and");
@@ -96,22 +116,22 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
 
         display_.setTextColor(2);
         display_.setCursor(x1, 520);
-        display_.println("3. Fill in the information and");
+        display_.println("3. Settings and photo upload");
         display_.setCursor(display_.getCursorX() + 95, display_.getCursorY());
-        display_.print("press ");
+        display_.print("Tap ");
         display_.setTextColor(0);
-        display_.print("Send to FramEInk! ");
+        display_.print("Finish when done");
 
         display_.setTextColor(1);
-        drawCentreString("This page will remain", width_ / 2, 800);
+        drawCentreString("Closes after inactivity:", width_ / 2, 800);
         display_.println("");
         drawCentreString(
-            (String("active for ") + String(settings.accessPointDurationMinutes()) + String(" minutes")).c_str(),
+            (String(settings.accessPointDurationMinutes()) + String(" minutes")).c_str(),
             width_ / 2,
             display_.getCursorY());
 
         for (size_t i = 0; i < thick; i++)
-            display_.drawRoundRect(x1 + i, display_.getCursorY() - 135 + i, width_ - 1 - 110 - 2 * i, 200 - 2 * i, 10, 1);
+            display_.drawRoundRect(x1 + i, display_.getCursorY() - 120 + i, width_ - 1 - 110 - 2 * i, 200 - 2 * i, 10, 1);
 
         for (size_t i = 0; i < thick; i++)
             display_.drawRect(i, i, width_ - 1 - 2 * i, height_ - 1 - 2 * i, 1);
@@ -294,7 +314,7 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
             for (size_t row = 0; row < headerDay_; row += light_gray_h)
             {
                 for (size_t col = 0; col < static_cast<size_t>(x2); col += light_gray_w)
-                    display_.drawBitmap3Bit(x1 + col, y1 + row + static_cast<float>(i) * static_cast<float>(y2 - y1) / static_cast<float>(rows_), light_gray, light_gray_w, light_gray_h);
+                    frameink::drawBitmap3Bit(display_, x1 + col, y1 + row + static_cast<float>(i) * static_cast<float>(y2 - y1) / static_cast<float>(rows_), light_gray, light_gray_w, light_gray_h);
             }
             display_.fillRect(x1, static_cast<int>(static_cast<float>(y1) + headerDay_ - thickLineGrid_ + static_cast<float>(i) * static_cast<float>(y2 - y1) / static_cast<float>(rows_)), x2 - x1, thickLineGrid_, 6);
         }
@@ -535,7 +555,7 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
         display_.setCursor(xTempMin, y + 38);
         display_.print(day.minimumTemperature);
 
-        display_.drawBitmap3Bit(thermometerX, y - 28, termometro, termometro_w, termometro_h);
+        frameink::drawBitmap3Bit(display_, thermometerX, y - 28, termometro, termometro_w, termometro_h);
     }
 
     void drawSunriseSunsetTime(int x, int y, const frameink::WeatherDayForecast &day)
@@ -577,7 +597,7 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
         display_.print("mm");
 
         const int offsetYIcon = 0.5f * (2 * (h + separator) - icon_drop_h);
-        display_.drawBitmap3Bit(x, y - h * 1.3f + offsetYIcon, icon_drop, icon_drop_w, icon_drop_h);
+        frameink::drawBitmap3Bit(display_, x, y - h * 1.3f + offsetYIcon, icon_drop, icon_drop_w, icon_drop_h);
     }
 
     void drawWeatherStrip(const frameink::WeatherForecast &weather)

@@ -4,6 +4,10 @@
  Author:    rudipirani
 */
 
+#if !defined(ARDUINO_INKPLATE10) && !defined(ARDUINO_INKPLATE10V2)
+#error "Select Inkplate 10 for this sketch. For Inkplate 6 Color use FramEink_6Color/FramEink_6Color.ino."
+#endif
+
 #include <ApplicationController.h>
 #include <CalendarService.h>
 #include <CommonFunctions.h>
@@ -79,6 +83,7 @@ void setup()
             refreshPolicy);
 
     renderer->begin();
+    settingsService->configurePhotoUpload(renderer->photoUploadTarget());
     const frameink::RefreshResult refreshResult = appController->executeCycle(runtimeState, *renderer);
     renderer->present();
 

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FramEInk · Photos and settings</title>
+<style>
+:root{font-family:system-ui,-apple-system,sans-serif;color:#20312e;background:#f4f5f0;color-scheme:light}
+*{box-sizing:border-box}body{margin:0}main{max-width:760px;margin:auto;padding:24px 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px}
+h1{font-size:28px;letter-spacing:-1px;margin:0}h2{font-size:21px;margin:0 0 12px}
+p{line-height:1.5}small,.muted{color:#526760}.muted{font-size:14px}
+.card{background:white;padding:22px;border-radius:18px;border:1px solid #dce3da;margin-bottom:18px}
+button,.file-button{display:inline-block;font:inherit;font-weight:600;border:0;border-radius:10px;padding:12px 17px;background:#17644e;color:white;cursor:pointer;text-align:center;text-decoration:none}
+button.secondary{background:#e8efe9;color:#244b3d}button.danger{background:#a12626}button:disabled,.file-button.disabled{opacity:.45;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #d5a74f;outline-offset:2px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+label{display:block;font-size:14px;margin:12px 0 5px}input:not([type=range]):not([type=checkbox]),select{font:inherit;width:100%;padding:11px;border:1px solid #b7c6bc;border-radius:8px;background:white;color:inherit}
+input[type=range]{width:100%;accent-color:#17644e}input[type=file]{position:absolute;width:1px!important;height:1px;opacity:0}
+.preview{background:#edf0ea;border-radius:12px;padding:12px;margin:18px 0;text-align:center}
+canvas{display:block;max-width:100%;max-height:60vh;width:auto;height:auto;margin:auto;background:white}
+.columns{display:grid;grid-template-columns:1fr 1fr;gap:12px}.status{padding:12px 0 0;line-height:1.5;overflow-wrap:anywhere;white-space:pre-line}
+.status.error{color:#a12626}.status.success{color:#17644e}.status:empty{padding-top:0}progress{width:100%;height:12px;margin-top:14px}
+[hidden]{display:none!important}details summary{font-weight:600;cursor:pointer}details[open] summary{margin-bottom:18px}
+#uploaded{padding-left:20px;font-size:14px;overflow-wrap:anywhere}footer{font-size:13px;line-height:1.5;color:#526760}
+.gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:18px}
+.photo-card{border:1px solid #dce3da;border-radius:12px;padding:14px;min-width:0}.photo-card:has(input:checked){border-color:#17644e;background:#f1f7f2}
+.photo-card label{display:flex;gap:9px;align-items:flex-start;margin:0 0 10px;overflow-wrap:anywhere}.photo-card input{flex-shrink:0;accent-color:#17644e;width:18px;height:18px;margin:1px 0}
+.photo-card small{display:block;margin-bottom:12px}.photo-card button{font-size:14px;padding:9px 12px}
+.photo-card .photo-thumb{display:block;width:100%;height:auto;max-height:none;aspect-ratio:4/3;border-radius:8px;background:#edf0ea;margin:0 0 12px}
+.photo-card .preview-note{font-size:12px;line-height:1.4;margin:-4px 0 10px;color:#526760}
+dialog{border:0;border-radius:16px;padding:20px;max-width:min(94vw,900px);max-height:94vh}dialog::backdrop{background:#14221dbb}
+dialog img{display:block;max-width:100%;max-height:68vh;object-fit:contain;margin:12px auto}dialog h2{overflow-wrap:anywhere;font-size:18px}
+@media(max-width:440px){.card{padding:17px}header{align-items:flex-start}.columns{grid-template-columns:1fr}#finish{padding:10px 12px;font-size:14px}}
+</style>
+<script src="/portal.js" defer></script>
+</head>
+<body><main>
+<header><div><h1>FramEInk</h1><p id="device" class="muted">Connecting to your device…</p></div><button id="finish" disabled>Finish</button></header>
+<section class="card" aria-labelledby="photo-title">
+<h2 id="photo-title">Your photos, on your frame</h2>
+<p>Choose images from your phone. Previewing, cropping and HEIC → JPEG conversion happen on your phone, even without Internet access.</p>
+<label class="file-button disabled" id="pick-label" for="files">Select photos</label>
+<input id="files" type="file" accept="image/*,.heic,.heif" multiple disabled>
+<p id="queue-info" class="muted">You can select several photos and upload them one at a time.</p>
+<div id="editor" hidden>
+<div class="preview"><canvas id="preview" aria-label="Photo preview resized to the display"></canvas></div>
+<div class="columns">
+<div><label for="fit">Fit</label><select id="fit"><option value="contain">Entire photo, with borders if needed</option><option value="cover">Fill the screen, cropping if needed</option></select></div>
+<div><label for="rotate">Orientation</label><button id="rotate" class="secondary" type="button">Rotate 90°</button></div>
+</div>
+<div id="crop-controls" hidden>
+<label for="crop-x">Horizontal position</label><input id="crop-x" type="range" min="0" max="100" value="50">
+<label for="crop-y">Vertical position</label><input id="crop-y" type="range" min="0" max="100" value="50">
+</div>
+<div class="actions"><button id="upload">Upload photo</button><button id="skip" class="secondary">Skip photo</button></div>
+</div>
+<progress id="progress" max="100" value="0" hidden aria-label="Upload progress"></progress>
+<div id="photo-status" class="status" role="status" aria-live="polite"></div>
+<ul id="uploaded"></ul>
+</section>
+<section class="card" aria-labelledby="gallery-title">
+<h2 id="gallery-title">Photos on your frame</h2>
+<p id="gallery-folder" class="muted">View photos stored on the SD card. Select the ones you want to delete.</p>
+<div class="actions">
+<button id="refresh-photos" class="secondary" disabled>Refresh</button>
+<button id="select-photos" class="secondary" disabled>Select this page</button>
+<button id="select-all-photos" class="secondary" disabled>Select all</button>
+<button id="clear-photos" class="secondary" disabled hidden>Clear selection</button>
+<button id="delete-photos" class="danger" disabled>Delete selected</button>
+</div>
+<p id="gallery-page" class="muted" role="status" aria-live="polite" hidden></p>
+<div id="gallery-status" class="status" role="status" aria-live="polite"></div>
+<p id="gallery-selection" class="muted" role="status" aria-live="polite" hidden></p>
+<div id="gallery" class="gallery"></div>
+<div class="actions"><button id="previous-photos" class="secondary" disabled>Previous</button><button id="next-photos" class="secondary" disabled>Next</button></div>
+<p class="muted">Previews load automatically. Tap “View photo” to open a larger image. Deleting removes the selected photos from the SD card permanently, not from your phone.</p>
+</section>
+<dialog id="photo-dialog" aria-labelledby="view-title">
+<h2 id="view-title">Photo preview</h2>
+<div id="view-status" class="status" role="status" aria-live="polite"></div>
+<img id="stored-photo" alt="">
+<form method="dialog"><button class="secondary">Close preview</button></form>
+</dialog>
+<details class="card" id="settings">
+<summary>Wi‑Fi, weather and calendar settings</summary>
+<form id="settings-form">
+<label for="ssid">Home Wi‑Fi network name</label><input id="ssid" name="ssid" maxlength="32" required autocomplete="off">
+<label for="password">Wi‑Fi password</label><input id="password" name="password" type="password" maxlength="63" autocomplete="off">
+<div class="columns">
+<div><label for="latitude">Latitude</label><input id="latitude" name="latitude" maxlength="20" placeholder="48.1509" inputmode="decimal" required></div>
+<div><label for="longitude">Longitude</label><input id="longitude" name="longitude" maxlength="20" placeholder="11.5670" inputmode="decimal" required></div>
+</div>
+<label for="calendarUrl">iCal calendar URL (optional)</label><input id="calendarUrl" name="calendarUrl" type="url" maxlength="250" placeholder="https://…/basic.ics">
+<div class="actions"><button id="save-settings" type="submit">Save settings</button></div>
+</form>
+<div id="settings-status" class="status" role="status" aria-live="polite"></div>
+</details>
+<footer>Tap “Finish” when you are done: FramEInk will display the calendar and go to sleep. The portal closes after 10 minutes of inactivity; it stays open during conversion and transfer. To reopen it, turn the frame off and on again. Your photos stay on the SD card.</footer>
+</main></body></html>

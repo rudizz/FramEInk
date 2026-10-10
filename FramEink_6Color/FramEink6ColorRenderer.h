@@ -4,6 +4,7 @@
 #include <CommonFunctions.h>
 #include <Network.h>
 #include <SDPhoto.h>
+#include <InkplateImageCompat.h>
 #include <EventClass.h>
 
 #include "Inkplate.h"
@@ -50,6 +51,18 @@ class FramEink6ColorRenderer : public frameink::IApplicationRenderer
         display_.display();
     }
 
+    frameink::PhotoUploadTarget photoUploadTarget()
+    {
+        frameink::PhotoUploadTarget target;
+        target.name = "FramEInk 6 Color";
+        target.width = display_.width();
+        target.height = display_.height();
+        target.directory = "/landscape";
+        target.grayscale = false;
+        target.storage = sdPhoto_ != nullptr && sdPhoto_->initOk ? &display_.getSdFat() : nullptr;
+        return target;
+    }
+
     void renderSettingsPortal(const frameink::IDeviceConfigurationProvider &settings) override
     {
         display_.clearDisplay();
@@ -58,13 +71,21 @@ class FramEink6ColorRenderer : public frameink::IApplicationRenderer
 
         display_.setTextColor(INKPLATE_BLACK);
         display_.setCursor(15, 60);
-        display_.print("1. Connect to ");
+        display_.print("1. ");
+        const int connectX = display_.getCursorX();
+        display_.print("Connect to ");
         display_.setTextColor(INKPLATE_RED);
         display_.print(settings.accessPointSsid());
         display_.setTextColor(INKPLATE_BLACK);
         display_.println(" WiFi");
 
-        display_.setCursor(15, 120);
+        display_.setCursor(connectX, 100);
+        display_.print("Password: ");
+        display_.setTextColor(INKPLATE_RED);
+        display_.print(settings.accessPointPassword());
+        display_.setTextColor(INKPLATE_BLACK);
+
+        display_.setCursor(15, 145);
         display_.println("2. Open your web browser and");
         display_.setCursor(display_.getCursorX() + 60, display_.getCursorY());
         display_.print("go to: ");
@@ -76,25 +97,25 @@ class FramEink6ColorRenderer : public frameink::IApplicationRenderer
         display_.println();
 
         display_.setTextColor(INKPLATE_BLACK);
-        display_.setCursor(15, 220);
-        display_.println("3. Fill in the information and");
+        display_.setCursor(15, 235);
+        display_.println("3. Settings and photo upload");
         display_.setCursor(display_.getCursorX() + 60, display_.getCursorY());
-        display_.print("press ");
+        display_.print("Tap ");
         display_.setTextColor(INKPLATE_ORANGE);
-        display_.print("Send to FramEInk! ");
+        display_.print("Finish when done");
 
         display_.setTextColor(INKPLATE_RED);
         display_.setCursor(35, 300);
-        drawCentreString("This page will remain", width_ / 2, 320);
+        drawCentreString("Closes after inactivity:", width_ / 2, 320);
         display_.println("");
         drawCentreString(
-            (String("active for ") + String(settings.accessPointDurationMinutes()) + String(" minutes")).c_str(),
+            (String(settings.accessPointDurationMinutes()) + String(" minutes")).c_str(),
             width_ / 2,
             display_.getCursorY());
 
         const uint8_t thick = 5;
         for (size_t i = 0; i < thick; i++)
-            display_.drawRoundRect(55 + i, 280 + i, width_ - 1 - 110 - 2 * i, display_.getCursorY() - 280 + 30 - 2 * i, 10, INKPLATE_ORANGE);
+            display_.drawRoundRect(55 + i, 295 + i, width_ - 1 - 110 - 2 * i, display_.getCursorY() - 280 + 30 - 2 * i, 10, INKPLATE_ORANGE);
 
         for (size_t i = 0; i < thick; i++)
             display_.drawRect(i, i, width_ - 1 - 2 * i, height_ - 1 - 2 * i, INKPLATE_GREEN);
@@ -192,7 +213,7 @@ class FramEink6ColorRenderer : public frameink::IApplicationRenderer
         for (size_t row = 0; row < headerDay_; row += yellow_white_h)
         {
             for (size_t col = 0; col < static_cast<size_t>(x2); col += yellow_white_w)
-                display_.drawBitmap3Bit(x1 + col, y1 + row, yellow_white, yellow_white_w, yellow_white_h);
+                frameink::drawBitmap3Bit(display_, x1 + col, y1 + row, yellow_white, yellow_white_w, yellow_white_h);
         }
         display_.fillRect(x1, headerDay_, x2 - x1, 3, INKPLATE_YELLOW);
 
@@ -393,7 +414,7 @@ class FramEink6ColorRenderer : public frameink::IApplicationRenderer
         for (int i = 0; i < 9; ++i)
         {
             if (strcmp(day.iconCode, abbrs_[i]) == 0)
-                display_.drawBitmap3Bit(beginX, beginY, colorIcons_[i], colorIconsWidth_[i], colorIconsHeight_[i]);
+                frameink::drawBitmap3Bit(display_, beginX, beginY, colorIcons_[i], colorIconsWidth_[i], colorIconsHeight_[i]);
         }
     }
 
@@ -431,7 +452,7 @@ class FramEink6ColorRenderer : public frameink::IApplicationRenderer
         display_.setCursor(xTempMin, y + 30);
         display_.print(day.minimumTemperature);
 
-        display_.drawBitmap3Bit(xThermometer, y - 28, termometro, termometro_w, termometro_h);
+        frameink::drawBitmap3Bit(display_, xThermometer, y - 28, termometro, termometro_w, termometro_h);
     }
 
     void drawSunriseSunsetTime(int x, int y, const frameink::WeatherDayForecast &day)
@@ -450,7 +471,7 @@ class FramEink6ColorRenderer : public frameink::IApplicationRenderer
         display_.print(day.sunset);
 
         const int offsetYIcon = 0.5f * (2 * (h + separator) - icon_sunset_h);
-        display_.drawBitmap3Bit(x + 2, y - h * 1.2f + offsetYIcon, icon_sunset, icon_sunset_w, icon_sunset_h);
+        frameink::drawBitmap3Bit(display_, x + 2, y - h * 1.2f + offsetYIcon, icon_sunset, icon_sunset_w, icon_sunset_h);
     }
 
     void drawProbabilityOfRain(int x, int y, const frameink::WeatherDayForecast &day)
@@ -476,7 +497,7 @@ class FramEink6ColorRenderer : public frameink::IApplicationRenderer
         display_.print("mm");
 
         const int offsetYIcon = 0.5f * (2 * (h + separator) - icon_drop_h);
-        display_.drawBitmap3Bit(x, y - h * 1.3f + offsetYIcon, icon_drop, icon_drop_w, icon_drop_h);
+        frameink::drawBitmap3Bit(display_, x, y - h * 1.3f + offsetYIcon, icon_drop, icon_drop_w, icon_drop_h);
     }
 
     void drawWeatherStrip(const frameink::WeatherForecast &weather)
