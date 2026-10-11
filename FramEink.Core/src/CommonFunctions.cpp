@@ -1,4 +1,5 @@
 #include "CommonFunctions.h"
+#include "Calendar/CalendarText.h"
 
 #include <cctype>
 #include <cstdint>
@@ -274,6 +275,10 @@ bool decodeUtf8Codepoint(const char* source, size_t& index, uint32_t& codepoint)
         value = (value << 6) | (next & 0x3F);
     }
 
+    const uint32_t minimum[] = {0, 0x80, 0x800, 0x10000};
+    if (value < minimum[continuationCount] || value > 0x10FFFF || (value >= 0xD800 && value <= 0xDFFF))
+        return false;
+
     index += continuationCount;
     codepoint = value;
     return true;
@@ -462,10 +467,14 @@ void parseProperty(const char* line, const char* propertyName, ICalProperty& pro
 void decodeIcalText(const char* source, char* destination, size_t destinationSize)
 {
     size_t outIndex = 0;
-    for (size_t index = 0; source[index] != 0 && outIndex + 1 < destinationSize; ++index)
+    if (destinationSize == 0)
+        return;
+    for (size_t index = 0; source[index] != 0; ++index)
     {
         if (source[index] == '\\')
         {
+            if (outIndex + 1 >= destinationSize)
+                break;
             char next = source[index + 1];
             if (next == 0)
                 break;
@@ -494,13 +503,36 @@ void decodeIcalText(const char* source, char* destination, size_t destinationSiz
             const unsigned char current = static_cast<unsigned char>(source[index]);
             if (current < 0x80)
             {
+                if (outIndex + 1 >= destinationSize)
+                    break;
                 destination[outIndex++] = source[index];
                 continue;
             }
 
             uint32_t codepoint = 0;
             const bool decoded = decodeUtf8Codepoint(source, index, codepoint);
+            // GFX prints bytes, not UTF-8. Encode each supported letter as one
+            // glyph so width measurement, wrapping and truncation stay atomic.
+            const uint8_t glyph = frameink::calendarGlyphForCodepoint(decoded ? codepoint : current);
+            if (glyph != 0)
+            {
+                if (outIndex + 1 >= destinationSize)
+                    break;
+                destination[outIndex++] = static_cast<char>(glyph);
+                continue;
+            }
+            if (decoded && outIndex > 0)
+            {
+                const uint8_t composed = frameink::composeCalendarAccent(static_cast<uint8_t>(destination[outIndex - 1]), codepoint);
+                if (composed != 0)
+                {
+                    destination[outIndex - 1] = static_cast<char>(composed);
+                    continue;
+                }
+            }
             const char* replacement = decoded ? asciiForCodepoint(codepoint) : asciiForLegacyByte(current);
+            if (outIndex + 1 >= destinationSize)
+                break;
             appendReplacement(replacement, destination, destinationSize, outIndex);
         }
     }

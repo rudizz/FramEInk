@@ -12,6 +12,7 @@
 #include <CalendarService.h>
 #include <CommonFunctions.h>
 #include <Network.h>
+#include <Scheduling/InkplateClock.h>
 #include <WiFiAccessPoint/SettingsService.h>
 
 #include "FramEink10Renderer.h"
@@ -28,6 +29,7 @@ static frameink::ApplicationRuntime makeInitialRuntimeState()
     runtime.lastAwakeEpoch = 0;
     runtime.counterPortrait = 0u;
     runtime.counterLandscape = 0u;
+    runtime.schedule = {0};
     return runtime;
 }
 
@@ -36,9 +38,6 @@ static frameink::RefreshPolicy makeRefreshPolicy()
     frameink::RefreshPolicy policy;
     policy.visibleDays = 6;
     policy.defaultSleepMinutes = 60ll;
-    policy.overnightSleepMinutes = 360ll;
-    policy.overnightStartHour = 23;
-    policy.overnightEndHour = 2;
     return policy;
 }
 
@@ -56,9 +55,6 @@ frameink::ApplicationController *appController = nullptr;
 
 void setup()
 {
-    // Unlike the wall clock, millis() is not affected by the first NTP synchronization.
-    const unsigned long cycleStartedMilliseconds = millis();
-
     if (DEBUG)
     {
         Serial.begin(115200);
@@ -83,20 +79,15 @@ void setup()
             refreshPolicy);
 
     renderer->begin();
+    frameink::restoreRtcTime(renderer->clockRtc());
     settingsService->configurePhotoUpload(renderer->photoUploadTarget());
-    const frameink::RefreshResult refreshResult = appController->executeCycle(runtimeState, *renderer);
+    appController->executeCycle(runtimeState, *renderer);
     renderer->present();
 
-    const long long requestedSleepTime = refreshResult.sleepMinutes * MIN_2_MICROSEC;
-    const long long computationTime =
-        static_cast<long long>(millis() - cycleStartedMilliseconds) * 1000ll;
-    const long long sleepTime =
-        computationTime < requestedSleepTime
-            ? requestedSleepTime - computationTime
-            : requestedSleepTime;
-
-    esp_sleep_enable_timer_wakeup(sleepTime);
-    (void)esp_deep_sleep_start();
+    const frameink::DeviceConfiguration configuration = settingsService->currentConfiguration();
+    frameink::sleepUntilNextRefresh(renderer->clockRtc(), runtimeState.schedule,
+        runtimeState.timeZoneSeconds, configuration.nightPause, configuration.updateMinute,
+        network.timeSynchronized());
 }
 
 void loop()

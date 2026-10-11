@@ -5,6 +5,8 @@
 #include <Network.h>
 #include <SDPhoto.h>
 #include <InkplateImageCompat.h>
+#include <BatteryIndicator.h>
+#include <Calendar/CalendarTextLayout.h>
 #include <EventClass.h>
 
 #include "Inkplate.h"
@@ -50,6 +52,8 @@ class FramEink6ColorRenderer : public frameink::IApplicationRenderer
     {
         display_.display();
     }
+
+    RTC &clockRtc() { return display_.rtc; }
 
     frameink::PhotoUploadTarget photoUploadTarget()
     {
@@ -120,6 +124,7 @@ class FramEink6ColorRenderer : public frameink::IApplicationRenderer
         for (size_t i = 0; i < thick; i++)
             display_.drawRect(i, i, width_ - 1 - 2 * i, height_ - 1 - 2 * i, INKPLATE_GREEN);
 
+        frameink::drawBatteryIcon(display_, width_ - 56, 16, display_.readBattery(), INKPLATE_BLACK);
         display_.display();
     }
 
@@ -265,86 +270,28 @@ class FramEink6ColorRenderer : public frameink::IApplicationRenderer
         const int yUpBox = beginY + 3;
         const int marginTextEvent = 5;
         const int xStartTitle = xLeftBox + marginTextEvent;
-        const int interlinea = -5;
+        const int textWidth = xRightBox - xLeftBox - 2 * marginTextEvent;
 
-        display_.setFont(&FreeSansBold12pt7b);
+        display_.setFont(&CalendarSansBold12pt);
         display_.setTextColor(colorCalendarTitle_);
-
-        int n = 0;
-        char line[128];
-        int lastSpace = -100;
         display_.setCursor(xStartTitle, beginY + 33);
-        for (int i = 0; i < min(EventClass::MAX_N_CHAR_TITLE_CALENDAR, static_cast<int>(strlen(event.name))); ++i)
-        {
-            if (n == 0 && event.name[i] == ' ')
-                i++;
-
-            line[n] = event.name[i];
-            if (line[n] == ' ')
-                lastSpace = n;
-            line[++n] = 0;
-
-            int16_t xt1, yt1;
-            uint16_t w, h;
-            display_.getTextBounds(line, 0, 0, &xt1, &yt1, &w, &h);
-
-            if (w > xRightBox - xLeftBox - 2 * marginTextEvent)
-            {
-                i--;
-                line[--n] = 0;
-
-                if (n - lastSpace < 5)
-                {
-                    i -= n - lastSpace - 1;
-                    line[lastSpace] = 0;
-                }
-
-                display_.setCursor(xStartTitle, display_.getCursorY() + interlinea);
-                display_.println(line);
-                line[0] = 0;
-                n = 0;
-            }
-        }
-
-        if (line[0] != 0)
-        {
-            display_.setCursor(xStartTitle, display_.getCursorY() + interlinea);
-            display_.println(line);
-        }
+        // Extra accents need enough vertical space between wrapped lines.
+        frameink::printWrappedCalendarText(display_, event.name, xStartTitle, textWidth, -2, false);
 
         display_.setCursor(xStartTitle, display_.getCursorY() - 7);
-        display_.setFont(&FreeSansBold9pt7b);
-
-        if (strlen(event.location) > 1)
+        display_.setFont(&CalendarSansBold9pt);
+        display_.setTextColor(colorCalendarTime_);
+        if (event.location[0] != '\0')
         {
-            display_.setTextColor(colorCalendarTime_);
             display_.println(event.time);
-
             display_.setCursor(xStartTitle, display_.getCursorY() - 3);
-
-            char locationLine[128] = { 0 };
+            char locationLine[128] = {};
+            frameink::fitCalendarText(display_, event.location, locationLine, sizeof(locationLine), textWidth);
             display_.setTextColor(colorCalendarLocation_);
-            for (int i = 0; i < static_cast<int>(strlen(event.location)); ++i)
-            {
-                locationLine[i] = event.location[i];
-                locationLine[i + 1] = 0;
-
-                int16_t xt1, yt1;
-                uint16_t w, h;
-                display_.getTextBounds(locationLine, 0, 0, &xt1, &yt1, &w, &h);
-                if (w > xRightBox - xLeftBox - 2 * marginTextEvent)
-                {
-                    for (int j = i - 1; j > max(-1, i - 4); --j)
-                        locationLine[j] = '.';
-                    locationLine[i] = 0;
-                }
-            }
-
             display_.print(locationLine);
         }
         else
         {
-            display_.setTextColor(colorCalendarTime_);
             display_.print(event.time);
         }
 

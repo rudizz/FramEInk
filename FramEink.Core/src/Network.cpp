@@ -15,6 +15,8 @@ Distributed as-is; no warranty is given.
 */
 
 #include "Network.h"
+#include "Connectivity/WiFiConnection.h"
+#include "Connectivity/TimeSync.h"
 
 // Shared JSON document for weather parsing.
 JsonDocument doc;
@@ -49,35 +51,23 @@ const frameink::NetworkConfiguration &Network::configuration() const
     return *configuration_;
 }
 
+bool Network::connectWiFi()
+{
+    if (frameink::ensureWiFiConnected(configuration_->device.wifiSsid.c_str(),
+                                     configuration_->device.wifiPassword.c_str()))
+        return true;
+
+    // Preserve the existing recovery on a prolonged connection failure.
+    Serial.println(F("[WiFi] Can't connect to WiFi, restarting."));
+    delay(100);
+    ESP.restart();
+    return false;
+}
+
 void Network::begin()
 {
-    // Initiating wifi, like in BasicHttpClient example
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(configuration_->device.wifiSsid.c_str(), configuration_->device.wifiPassword.c_str());
-
-    int cnt = 0;
-    if (DEBUG_PRINT)
-        Serial.print(F("Waiting for WiFi to connect..."));
-    while ((WiFi.status() != WL_CONNECTED))
-    {
-        if (DEBUG_PRINT)
-            Serial.print(F("."));
-        delay(1000);
-        ++cnt;
-
-        WiFi.reconnect();
-        delay(5000);
-
-        if (cnt == 20)
-        {
-            if (DEBUG_PRINT)
-                Serial.println("Can't connect to WIFI, restarting");
-            delay(100);
-            ESP.restart();
-        }
-    }
-    if (DEBUG_PRINT)
-        Serial.println(F(" connected"));
+    if (!connectWiFi())
+        return;
 
     // Find internet time
     setTime();
@@ -127,36 +117,8 @@ long Network::getDataCalendar(char *data)
     // Variable to store fail
     bool f = 0;
 
-    // If not connected to wifi reconnect wifi
-    if (WiFi.status() != WL_CONNECTED)
-    {
-        WiFi.reconnect();
-
-        delay(500);
-
-        int cnt = 0;
-        //if (DEBUG_PRINT)
-            Serial.println(F("Waiting for WiFi to reconnect..."));
-        while ((WiFi.status() != WL_CONNECTED))
-        {
-            // Prints a dot every second that wifi isn't connected
-            //if (DEBUG_PRINT)
-                Serial.print(F("."));
-            delay(1000);
-            ++cnt;
-
-            WiFi.reconnect();
-            delay(1000);
-
-            if (cnt == 20)
-            {
-                //if (DEBUG_PRINT)
-                    Serial.println("Can't connect to WIFI, restart initiated.");
-                delay(100);
-                ESP.restart();
-            }
-        }
-    }
+    if (!connectWiFi())
+        return 1;
 
     // Http object used to make get request
     HTTPClient http;
@@ -272,33 +234,8 @@ void formatSunrise(char *str, time_t epochSunrise)
 
 bool Network::loadWeatherForecast(frameink::WeatherForecast &forecast)
 {
-    // If not connected to wifi reconnect wifi
-    if (WiFi.status() != WL_CONNECTED)
-    {
-        WiFi.reconnect();
-
-        delay(5000);
-
-        int cnt = 0;
-        if (DEBUG_PRINT)
-            Serial.println(F("Waiting for WiFi to reconnect..."));
-        while ((WiFi.status() != WL_CONNECTED))
-        {
-            // Prints a dot every second that wifi isn't connected
-            if (DEBUG_PRINT)
-                Serial.print(F("."));
-            delay(1000);
-            ++cnt;
-
-            if (cnt == 7)
-            {
-                if (DEBUG_PRINT)
-                    Serial.println("Can't connect to WIFI, restart initiated.");
-                delay(100);
-                ESP.restart();
-            }
-        }
-    }
+    if (!connectWiFi())
+        return false;
 
     // Wake up if sleeping and save initial state
     bool sleep = WiFi.getSleep();
@@ -392,20 +329,8 @@ float Network::getRainSnowPrecipitationMM(bool isSnowing, int day)
 
 void Network::setTime()
 {
-    // Used for setting correct time
-    configTime(0, 0, "pool.ntp.org", "time.nist.gov");
-
-    if (DEBUG_PRINT)
-        Serial.print(F("Waiting for NTP time sync: "));
-    time_t nowSecs = time(nullptr);
-    while (nowSecs < 8 * 3600 * 2)
-    {
-        delay(500);
-        if (DEBUG_PRINT)
-            Serial.print(F("."));
-        yield();
-        nowSecs = time(nullptr);
-    }
+    timeSynchronized_ = frameink::synchronizeNetworkTime();
+    const time_t nowSecs = time(nullptr);
 
     // Used to store time info
     struct tm timeinfo;

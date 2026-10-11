@@ -55,6 +55,14 @@ void WiFiAPSettingsClass::sendSettings()
     document["latitude"] = Latitude_User;
     document["longitude"] = Longitude_User;
     document["calendarUrl"] = ICALID_User;
+    char start[6], end[6];
+    frameink::formatClockTime(nightPause.startMinute, start);
+    frameink::formatClockTime(nightPause.endMinute, end);
+    document["nightPauseStart"] = start;
+    document["nightPauseEnd"] = end;
+    char minute[3];
+    snprintf(minute, sizeof(minute), "%02u", unsigned(updateMinute));
+    document["updateMinute"] = minute;
     String body;
     serializeJson(document, body);
     server_.sendHeader("Cache-Control", "no-store");
@@ -69,13 +77,32 @@ void WiFiAPSettingsClass::saveSettings()
     String latitude = server_.arg("latitude");
     String longitude = server_.arg("longitude");
     String calendar = server_.arg("calendarUrl");
+    uint8_t minute = updateMinute;
+    if (server_.hasArg("updateMinute") &&
+        !frameink::parseUpdateMinute(server_.arg("updateMinute").c_str(), minute))
+    {
+        server_.send(400, "text/plain; charset=utf-8", "Use a whole update minute from 00 to 59.");
+        return;
+    }
+    frameink::NightPause pause = nightPause;
+    if (server_.hasArg("nightPauseStart") || server_.hasArg("nightPauseEnd"))
+    {
+        if (!frameink::parseClockTime(server_.arg("nightPauseStart").c_str(), pause.startMinute) ||
+            !frameink::parseClockTime(server_.arg("nightPauseEnd").c_str(), pause.endMinute) || !pause.valid())
+        {
+            server_.send(400, "text/plain; charset=utf-8",
+                "Use valid pause times (HH:MM), leaving at least one hour outside the pause. Equal times disable it.");
+            return;
+        }
+    }
     latitude.replace(',', '.');
     longitude.replace(',', '.');
     char *latitudeEnd = nullptr;
     char *longitudeEnd = nullptr;
     const double lat = strtod(latitude.c_str(), &latitudeEnd);
     const double lon = strtod(longitude.c_str(), &longitudeEnd);
-    const size_t size = 5 + ssid.length() + password.length() + latitude.length() + longitude.length() + calendar.length();
+    const size_t size = 5 + frameink::nightPauseStorageBytes + frameink::updateMinuteStorageBytes +
+        ssid.length() + password.length() + latitude.length() + longitude.length() + calendar.length();
 
     if (ssid.length() == 0 || ssid.length() > 32 || password.length() > 63 ||
         latitude.length() == 0 || longitude.length() == 0 ||
@@ -88,11 +115,15 @@ void WiFiAPSettingsClass::saveSettings()
     }
 
     const String previous[] = {SSID_User, PWD_User, Latitude_User, Longitude_User, ICALID_User};
+    const frameink::NightPause previousPause = nightPause;
+    const uint8_t previousMinute = updateMinute;
     SSID_User = ssid;
     PWD_User = password;
     Latitude_User = latitude;
     Longitude_User = longitude;
     ICALID_User = calendar;
+    nightPause = pause;
+    updateMinute = minute;
     if (!writeEEPROM())
     {
         SSID_User = previous[0];
@@ -100,6 +131,8 @@ void WiFiAPSettingsClass::saveSettings()
         Latitude_User = previous[2];
         Longitude_User = previous[3];
         ICALID_User = previous[4];
+        nightPause = previousPause;
+        updateMinute = previousMinute;
         server_.send(500, "text/plain; charset=utf-8", "Unable to save the settings.");
         return;
     }
@@ -134,7 +167,9 @@ bool WiFiAPSettingsClass::writeEEPROM()
         for (size_t i = 0; i < value->length(); ++i)
             EEPROM.write(offset++, (*value)[i]);
     }
-    return EEPROM.commit();
+    return frameink::writeNightPause(EEPROM, offset, EEPROM_SIZE, nightPause) &&
+        frameink::writeUpdateMinute(EEPROM, offset + frameink::nightPauseStorageBytes, EEPROM_SIZE, updateMinute) &&
+        EEPROM.commit();
 }
 
 bool WiFiAPSettingsClass::readStringFromEEPROM(int &offset, String &value)
@@ -165,4 +200,6 @@ void WiFiAPSettingsClass::readEEPROM()
     Latitude_User = values[2];
     Longitude_User = values[3];
     ICALID_User = values[4];
+    nightPause = frameink::readNightPause(EEPROM, offset, EEPROM_SIZE);
+    updateMinute = frameink::readUpdateMinute(EEPROM, offset + frameink::nightPauseStorageBytes, EEPROM_SIZE);
 }

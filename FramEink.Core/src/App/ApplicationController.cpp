@@ -61,9 +61,10 @@ RefreshResult ApplicationController::executeCycle(ApplicationRuntime &runtime, I
     else
     {
         network_->begin();
-        network_->loadWeatherForecast(dashboard_.weather);
-
-        runtime.timeZoneSeconds = dashboard_.weather.timeZoneSeconds;
+        if (network_->loadWeatherForecast(dashboard_.weather))
+            runtime.timeZoneSeconds = dashboard_.weather.timeZoneSeconds;
+        else
+            dashboard_.weather.timeZoneSeconds = runtime.timeZoneSeconds;
         network_->configuration().timeZoneSeconds = runtime.timeZoneSeconds;
 
         dashboard_.hasCalendar =
@@ -80,23 +81,10 @@ RefreshResult ApplicationController::executeCycle(ApplicationRuntime &runtime, I
 
     runtime.stateCalendar = !runtime.stateCalendar;
     runtime.lastAwakeEpoch = result.startedEpoch;
-    runtime.sleepMinutes = resolveSleepMinutes();
+    runtime.sleepMinutes = refreshPolicy_.defaultSleepMinutes;
     result.sleepMinutes = runtime.sleepMinutes;
 
     return result;
-}
-
-long long ApplicationController::resolveSleepMinutes() const
-{
-    if (network_ == nullptr)
-        return refreshPolicy_.defaultSleepMinutes;
-
-    int timeHour = 0;
-    network_->getTimeHour(&timeHour, 0);
-    if (timeHour >= refreshPolicy_.overnightStartHour || timeHour < refreshPolicy_.overnightEndHour)
-        return refreshPolicy_.overnightSleepMinutes;
-
-    return refreshPolicy_.defaultSleepMinutes;
 }
 
 } // namespace frameink

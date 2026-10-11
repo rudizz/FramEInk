@@ -62,6 +62,8 @@ DeviceConfiguration PortalSettingsService::readConfiguration() const
     configuration.calendarUrl = portal_.ICALID_User;
     configuration.coordinates.latitude = atof(portal_.Latitude_User.c_str());
     configuration.coordinates.longitude = atof(portal_.Longitude_User.c_str());
+    configuration.nightPause = portal_.nightPause;
+    configuration.updateMinute = portal_.updateMinute;
     return configuration;
 }
 

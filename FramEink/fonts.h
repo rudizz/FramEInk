@@ -12,6 +12,8 @@
 #include <Fonts/FreeSansBold16pt7b.h>
 #include <Fonts/FreeSans18pt7b.h>
 #include <Fonts/FreeSans24pt7b.h>
+#include <Fonts/CalendarSansBold16pt.h>
+#include <Fonts/CalendarSans12pt.h>
 #include <Fonts/Roboto_Light_36.h>
 
 #endif

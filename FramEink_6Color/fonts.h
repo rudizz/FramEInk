@@ -10,5 +10,7 @@
 #include <Fonts/FreeSansBold12pt7b.h>
 #include <Fonts/FreeSansSerifBold14pt7b.h>
 #include <Fonts/FreeSans16pt7b.h>
+#include <Fonts/CalendarSansBold12pt.h>
+#include <Fonts/CalendarSansBold9pt.h>
 
 #endif

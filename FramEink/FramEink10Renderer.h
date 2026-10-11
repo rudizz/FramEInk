@@ -4,6 +4,8 @@
 #include <CommonFunctions.h>
 #include <SDPhoto.h>
 #include <InkplateImageCompat.h>
+#include <BatteryIndicator.h>
+#include <Calendar/CalendarTextLayout.h>
 
 #include "Inkplate.h"
 #include "fonts.h"
@@ -52,6 +54,8 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
     {
         display_.display();
     }
+
+    RTC &clockRtc() { return display_.rtc; }
 
     frameink::PhotoUploadTarget photoUploadTarget()
     {
@@ -136,6 +140,7 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
         for (size_t i = 0; i < thick; i++)
             display_.drawRect(i, i, width_ - 1 - 2 * i, height_ - 1 - 2 * i, 1);
 
+        frameink::drawBatteryIcon(display_, width_ - 56, 20, display_.readBattery(), 0);
         display_.display();
     }
 
@@ -259,32 +264,12 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
     void drawBattery()
     {
         const float batteryVoltage = display_.readBattery();
-        const float emptyBatteryVoltage = 3.70f;
-        const float fullBatteryVoltage = 4.16f;
-        float batteryLevel = (batteryVoltage - emptyBatteryVoltage) / (fullBatteryVoltage - emptyBatteryVoltage);
-        if (batteryLevel < 0.0f)
-            batteryLevel = 0.0f;
-        else if (batteryLevel > 1.0f)
-            batteryLevel = 1.0f;
-
         const int batteryBodyWidth = 34;
-        const int batteryBodyHeight = 16;
         const int batteryTerminalWidth = 4;
-        const int batteryTerminalHeight = 8;
         const int batteryTextX = width_ - marginRight_ - 50;
         const int batteryX = batteryTextX - batteryBodyWidth - batteryTerminalWidth - 10;
         const int batteryY = marginUp_ + 4;
-        const int batteryFillWidth = static_cast<int>(roundf(batteryLevel * (batteryBodyWidth - 4)));
-
-        display_.drawRect(batteryX, batteryY, batteryBodyWidth, batteryBodyHeight, 0);
-        display_.fillRect(
-            batteryX + batteryBodyWidth,
-            batteryY + (batteryBodyHeight - batteryTerminalHeight) / 2,
-            batteryTerminalWidth,
-            batteryTerminalHeight,
-            0);
-        if (batteryFillWidth > 0)
-            display_.fillRect(batteryX + 2, batteryY + 2, batteryFillWidth, batteryBodyHeight - 4, 0);
+        frameink::drawBatteryIcon(display_, batteryX, batteryY, batteryVoltage, 0);
 
         display_.setTextColor(0, 7);
         display_.setFont(&FreeSans12pt7b);
@@ -364,98 +349,34 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
         const int xLeftBox = marginLeft_ + cellWidth_ * (day % columns_) + padLeftRight;
         const int xRightBox = xLeftBox + cellWidth_ - 2 * padLeftRight;
         const int yUpBox = beginY + 3;
-        const int marginYDownBox = 3;
         const int marginTextEvent = 8;
         const int xStartTitle = xLeftBox + marginTextEvent;
-        const int interlinea = -15;
+        const int textWidth = xRightBox - xLeftBox - 2 * marginTextEvent;
 
-        display_.setFont(&FreeSansBold16pt7b);
+        display_.setFont(&CalendarSansBold16pt);
         display_.setTextColor(colorCalendarTitle_);
-
-        int n = 0;
-        char line[128];
-        int lastSpace = -100;
         display_.setCursor(xStartTitle, beginY + 50);
-        for (int i = 0; i < min(65, static_cast<int>(strlen(event.name))); ++i)
-        {
-            if (n == 0 && event.name[i] == ' ')
-                i++;
-
-            line[n] = event.name[i];
-            if (line[n] == ' ')
-                lastSpace = n;
-            line[++n] = 0;
-
-            int16_t xt1, yt1;
-            uint16_t w, h;
-            display_.getTextBounds(line, 0, 0, &xt1, &yt1, &w, &h);
-
-            if (w > xRightBox - xLeftBox - 2 * marginTextEvent)
-            {
-                i--;
-                line[--n] = 0;
-
-                if (n - lastSpace < 5)
-                {
-                    i -= n - lastSpace - 1;
-                    line[lastSpace] = 0;
-                }
-                else
-                {
-                    i--;
-                    line[--n] = '-';
-                }
-
-                display_.setCursor(xStartTitle, display_.getCursorY() + interlinea);
-                display_.println(line);
-                line[0] = 0;
-                n = 0;
-            }
-        }
-
-        if (line[0] != 0)
-        {
-            display_.setCursor(xStartTitle, display_.getCursorY() + interlinea);
-            display_.println(line);
-        }
+        // Extra accents need enough vertical space between wrapped lines.
+        frameink::printWrappedCalendarText(display_, event.name, xStartTitle, textWidth, -14, true);
 
         display_.setCursor(xStartTitle, display_.getCursorY() - 15);
-        display_.setFont(&FreeSans12pt7b);
-
-        if (strlen(event.location) > 1)
+        display_.setFont(&CalendarSans12pt);
+        display_.setTextColor(colorCalendarTime_);
+        if (event.location[0] != '\0')
         {
-            display_.setTextColor(colorCalendarTime_);
             display_.println(event.time);
-
             display_.setCursor(xStartTitle, display_.getCursorY() - 2);
-            char locationLine[128] = { 0 };
+            char locationLine[128] = {};
+            frameink::fitCalendarText(display_, event.location, locationLine, sizeof(locationLine), textWidth);
             display_.setTextColor(colorCalendarLocation_);
-
-            for (int i = 0; i < static_cast<int>(strlen(event.location)); ++i)
-            {
-                locationLine[i] = event.location[i];
-                locationLine[i + 1] = 0;
-
-                int16_t xt1, yt1;
-                uint16_t w, h;
-                display_.getTextBounds(locationLine, 0, 0, &xt1, &yt1, &w, &h);
-                if (w > xRightBox - xLeftBox - 2 * marginTextEvent)
-                {
-                    for (int j = i - 1; j > max(-1, i - 4); --j)
-                        locationLine[j] = '.';
-                    locationLine[i] = 0;
-                }
-            }
-
             display_.print(locationLine);
         }
         else
         {
-            display_.setTextColor(colorCalendarTime_);
             display_.print(event.time);
         }
 
-        const int yDownBox = display_.getCursorY() + 7 + marginYDownBox;
+        const int yDownBox = display_.getCursorY() + 10;
         display_.drawThickLine(xLeftBox, yUpBox, xLeftBox, yDownBox, 3, thickLineGrid_);
         display_.drawThickLine(xLeftBox, yDownBox, xRightBox, yDownBox, 3, thickLineGrid_);
         display_.drawThickLine(xRightBox, yDownBox, xRightBox, yUpBox, 3, thickLineGrid_);

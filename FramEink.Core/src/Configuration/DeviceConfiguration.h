@@ -1,6 +1,8 @@
 #pragma once
 
 #include <Arduino.h>
+#include "NightPause.h"
+#include "UpdateMinute.h"
 
 namespace frameink {
 
@@ -16,6 +18,8 @@ struct DeviceConfiguration
     String wifiPassword;
     String calendarUrl;
     GeoCoordinates coordinates;
+    NightPause nightPause;
+    uint8_t updateMinute = defaultUpdateMinute;
 
     bool hasWiFiCredentials() const
     {

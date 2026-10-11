@@ -43,6 +43,7 @@ class Network
 
     // Functions we can access in main file
     void begin();
+    bool timeSynchronized() const { return timeSynchronized_; }
     void getTime(char *timeStr, long offset = 0);
     time_t getNowEpoch(bool withTimezone);
     void getTimeHour(int *timeHour, long offSet);
@@ -53,9 +54,11 @@ class Network
     
   private:
     // Functions called from within our class
+    bool connectWiFi();
     void setTime();
 
     frameink::NetworkConfiguration defaultConfiguration_;
+    bool timeSynchronized_ = false;
     frameink::NetworkConfiguration *configuration_ = &defaultConfiguration_;
 };
 

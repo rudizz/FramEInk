@@ -5,7 +5,9 @@
 #include "../Configuration/DeviceConfiguration.h"
 #include "../Network.h"
 #include "../Weather/WeatherForecast.h"
+#include "../Scheduling/RefreshSchedule.h"
 #include "../WiFiAccessPoint/SettingsService.h"
+#include <type_traits>
 
 namespace frameink {
 
@@ -18,15 +20,14 @@ struct ApplicationRuntime
     time_t lastAwakeEpoch;
     unsigned int counterPortrait;
     unsigned int counterLandscape;
+    RefreshScheduleState schedule;
 };
+static_assert(std::is_trivial<ApplicationRuntime>::value, "RTC-retained runtime must not have a boot constructor");
 
 struct RefreshPolicy
 {
     int visibleDays = 6;
     long long defaultSleepMinutes = 60ll;
-    long long overnightSleepMinutes = 360ll;
-    int overnightStartHour = 23;
-    int overnightEndHour = 2;
 };
 
 struct DashboardModel
@@ -79,8 +80,6 @@ class ApplicationController
     RefreshResult executeCycle(ApplicationRuntime &runtime, IApplicationRenderer &renderer);
 
   private:
-    long long resolveSleepMinutes() const;
-
     Network *network_ = nullptr;
     IDeviceConfigurationProvider *settingsProvider_ = nullptr;
     CalendarService *calendarService_ = nullptr;

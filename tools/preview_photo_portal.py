@@ -53,7 +53,7 @@ def main():
               "grayscale": portrait, "directory": "/portrait" if portrait else "/landscape",
               "sdReady": True, "maxPhotoBytes": 2 * 1024 * 1024}
     settings = {"ssid": "Test WiFi", "password": "", "latitude": "48.1",
-                "longitude": "11.5", "calendarUrl": ""}
+                "longitude": "11.5", "calendarUrl": "", "nightPauseStart": "23:00", "nightPauseEnd": "05:00", "updateMinute": "00"}
     output = Path(tempfile.mkdtemp(prefix="frameink-portal-preview-"))
     if args.seed_photo:
         for index in range(args.seed_count):

@@ -16,6 +16,11 @@ struct HTTPUpload {
 
 class WebServer {
   public:
+    inline static WebServer *lastCreated = nullptr;
+    explicit WebServer(int = 80) { lastCreated = this; }
+    void begin() {}
+    void stop() {}
+    void handleClient() {}
     struct Client {
         WebServer *server;
         bool connected() const { return true; }
@@ -36,6 +41,7 @@ class WebServer {
     String header(const char *key) { return requestHeaders[key]; }
     size_t contentLength = 0;
     String arg(const char *key) { return arguments[key]; }
+    bool hasArg(const char *key) { return arguments.count(key) != 0; }
     void setContentLength(size_t size) { contentLength = size; }
     Client client() { return {this}; }
     void call(const char *path, HTTPMethod method = HTTP_GET) {

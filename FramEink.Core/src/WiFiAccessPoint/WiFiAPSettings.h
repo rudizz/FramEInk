@@ -5,6 +5,8 @@
 #include <WiFi.h>
 #include <EEPROM.h>
 #include "PhotoUploadService.h"
+#include "../Configuration/NightPause.h"
+#include "../Configuration/UpdateMinute.h"
 
 #define EEPROM_START_ADDR 0
 #define EEPROM_SIZE 512
@@ -27,6 +29,8 @@ class WiFiAPSettingsClass
     String Latitude_User;
     String Longitude_User;
     String ICALID_User;
+    frameink::NightPause nightPause;
+    uint8_t updateMinute = frameink::defaultUpdateMinute;
 
   private:
     void sendSettings();
