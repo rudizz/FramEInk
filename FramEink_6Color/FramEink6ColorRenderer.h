@@ -132,12 +132,11 @@ class FramEink6ColorRenderer : public frameink::IApplicationRenderer
     {
     }
 
-    void renderPhoto(frameink::ApplicationRuntime &runtime) override
+    void renderPhoto(frameink::ApplicationRuntime &runtime, frameink::PhotoOrder order) override
     {
-        runtime.counterLandscape = static_cast<unsigned int>(-1);
         display_.clearDisplay();
         if (sdPhoto_ != nullptr)
-            sdPhoto_->drawImageFromSD(0, 0, SDPhotoClass::PhotoOrientation::landscape, runtime.counterLandscape);
+            sdPhoto_->drawImageFromSD(0, 0, SDPhotoClass::PhotoOrientation::landscape, runtime.landscapePhotos, order);
     }
 
     void renderDashboard(const frameink::DashboardModel &model, frameink::ApplicationRuntime &runtime) override

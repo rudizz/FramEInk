@@ -6,6 +6,7 @@
 #include "../Network.h"
 #include "../Weather/WeatherForecast.h"
 #include "../Scheduling/RefreshSchedule.h"
+#include "../Photos/PhotoSequenceState.h"
 #include "../WiFiAccessPoint/SettingsService.h"
 #include <type_traits>
 
@@ -18,8 +19,8 @@ struct ApplicationRuntime
     int timeZoneSeconds;
     long long sleepMinutes;
     time_t lastAwakeEpoch;
-    unsigned int counterPortrait;
-    unsigned int counterLandscape;
+    PhotoSequenceState portraitPhotos;
+    PhotoSequenceState landscapePhotos;
     RefreshScheduleState schedule;
 };
 static_assert(std::is_trivial<ApplicationRuntime>::value, "RTC-retained runtime must not have a boot constructor");
@@ -58,7 +59,7 @@ class IApplicationRenderer
 
     virtual void renderSettingsPortal(const IDeviceConfigurationProvider &settings) = 0;
     virtual void renderSettingsSaved() = 0;
-    virtual void renderPhoto(ApplicationRuntime &runtime) = 0;
+    virtual void renderPhoto(ApplicationRuntime &runtime, PhotoOrder order) = 0;
     virtual void renderDashboard(const DashboardModel &model, ApplicationRuntime &runtime) = 0;
 };
 

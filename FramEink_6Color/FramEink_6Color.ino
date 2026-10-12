@@ -27,8 +27,8 @@ static frameink::ApplicationRuntime makeInitialRuntimeState()
     runtime.timeZoneSeconds = 0;
     runtime.sleepMinutes = 60ll;
     runtime.lastAwakeEpoch = 0;
-    runtime.counterPortrait = 0u;
-    runtime.counterLandscape = 0u;
+    runtime.portraitPhotos = {};
+    runtime.landscapePhotos = {};
     runtime.schedule = {0};
     return runtime;
 }

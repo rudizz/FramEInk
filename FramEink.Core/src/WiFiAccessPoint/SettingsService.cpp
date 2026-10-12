@@ -64,6 +64,7 @@ DeviceConfiguration PortalSettingsService::readConfiguration() const
     configuration.coordinates.longitude = atof(portal_.Longitude_User.c_str());
     configuration.nightPause = portal_.nightPause;
     configuration.updateMinute = portal_.updateMinute;
+    configuration.photoOrder = portal_.photoOrder;
     return configuration;
 }
 

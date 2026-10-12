@@ -24,6 +24,7 @@ class String {
     String &operator+=(const String &other) { value_ += other.value_; return *this; }
     friend String operator+(const String &a, const String &b) { return a.value_ + b.value_; }
     friend bool operator!=(const String &a, const String &b) { return a.value_ != b.value_; }
+    friend bool operator==(const String &a, const String &b) { return a.value_ == b.value_; }
 };
 
 inline unsigned long millis() { return 1234; }

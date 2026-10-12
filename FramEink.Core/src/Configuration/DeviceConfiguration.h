@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include "NightPause.h"
 #include "UpdateMinute.h"
+#include "PhotoOrder.h"
 
 namespace frameink {
 
@@ -20,6 +21,7 @@ struct DeviceConfiguration
     GeoCoordinates coordinates;
     NightPause nightPause;
     uint8_t updateMinute = defaultUpdateMinute;
+    PhotoOrder photoOrder = defaultPhotoOrder;
 
     bool hasWiFiCredentials() const
     {

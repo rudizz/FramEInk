@@ -52,9 +52,11 @@ dialog img{display:block;max-width:100%;max-height:68vh;object-fit:contain;margi
 <div><label for="fit">Fit</label><select id="fit"><option value="contain">Entire photo, with borders if needed</option><option value="cover">Fill the screen, cropping if needed</option></select></div>
 <div><label for="rotate">Orientation</label><button id="rotate" class="secondary" type="button">Rotate 90°</button></div>
 </div>
-<div id="crop-controls" hidden>
+<div id="crop-controls">
+<label for="zoom">Zoom · <output id="zoom-value" for="zoom">100%</output></label><input id="zoom" type="range" min="50" max="400" step="1" value="100" aria-describedby="crop-help">
 <label for="crop-x">Horizontal position</label><input id="crop-x" type="range" min="0" max="100" value="50">
 <label for="crop-y">Vertical position</label><input id="crop-y" type="range" min="0" max="100" value="50">
+<p id="crop-help" class="muted">Zoom is relative to Fit. Use the position sliders to move the image within the frame. Only the preview area is saved.</p>
 </div>
 <div class="actions"><button id="upload">Upload photo</button><button id="skip" class="secondary">Skip photo</button></div>
 </div>
@@ -65,6 +67,10 @@ dialog img{display:block;max-width:100%;max-height:68vh;object-fit:contain;margi
 <section class="card" aria-labelledby="gallery-title">
 <h2 id="gallery-title">Photos on your frame</h2>
 <p id="gallery-folder" class="muted">View photos stored on the SD card. Select the ones you want to delete.</p>
+<div class="columns">
+<div><label for="gallery-sort">Sort photos by</label><select id="gallery-sort" disabled><option value="modified" selected>Last modified</option><option value="name">Alphabetical</option></select></div>
+<div><label for="gallery-order">Order</label><select id="gallery-order" disabled><option value="desc" selected>Descending · newest / Z–A first</option><option value="asc">Ascending · oldest / A–Z first</option></select></div>
+</div>
 <div class="actions">
 <button id="refresh-photos" class="secondary" disabled>Refresh</button>
 <button id="select-photos" class="secondary" disabled>Select loaded</button>
@@ -88,7 +94,7 @@ dialog img{display:block;max-width:100%;max-height:68vh;object-fit:contain;margi
 <form method="dialog"><button class="secondary">Close preview</button></form>
 </dialog>
 <details class="card" id="settings">
-<summary>Wi‑Fi, weather, calendar and update schedule settings</summary>
+<summary>Wi‑Fi, weather, calendar, photos and update schedule settings</summary>
 <form id="settings-form">
 <label for="ssid">Home Wi‑Fi network name</label><input id="ssid" name="ssid" maxlength="32" required autocomplete="off">
 <label for="password">Wi‑Fi password</label><input id="password" name="password" type="password" maxlength="63" autocomplete="off">
@@ -97,6 +103,11 @@ dialog img{display:block;max-width:100%;max-height:68vh;object-fit:contain;margi
 <div><label for="longitude">Longitude</label><input id="longitude" name="longitude" maxlength="20" placeholder="11.5670" inputmode="decimal" required></div>
 </div>
 <label for="calendarUrl">iCal calendar URL (optional)</label><input id="calendarUrl" name="calendarUrl" type="url" maxlength="250" placeholder="https://…/basic.ics">
+<fieldset>
+<legend>Photo playback</legend>
+<label for="photoOrder">Photo order</label><select id="photoOrder" name="photoOrder" required aria-describedby="photo-order-help"><option value="random" selected>Random</option><option value="alphabetical">Alphabetical</option></select>
+<p id="photo-order-help" class="muted">Choose how photos are shown on the frame. Alphabetical follows file names, ignoring case, and starts again after the last photo. Random chooses a photo at each photo update; repeats are possible.</p>
+</fieldset>
 <fieldset>
 <legend>Hourly updates</legend>
 <label for="updateMinute">Update minute (00–59)</label><input id="updateMinute" name="updateMinute" type="number" min="0" max="59" step="1" value="00" inputmode="numeric" required aria-describedby="update-minute-help">

@@ -16,6 +16,9 @@ let savedCount = 0;
 let lastInteractionPing = 0;
 let galleryPhotos = [];
 let galleryNext = null;
+let galleryCursor = null;
+let gallerySort = "modified";
+let galleryOrder = "desc";
 let galleryTotalPhotos = 0;
 let galleryListError = null;
 const gallerySelection = new Map();
@@ -70,7 +73,7 @@ function setBusy(value) {
   byId("finish").disabled = value || !device || closed;
   byId("files").disabled = value || !device || !device.sdReady || closed;
   byId("pick-label").classList.toggle("disabled", byId("files").disabled);
-  for (const id of ["upload", "skip", "rotate", "fit", "crop-x", "crop-y", "save-settings"]) {
+  for (const id of ["upload", "skip", "rotate", "fit", "zoom", "crop-x", "crop-y", "save-settings"]) {
     byId(id).disabled = value || closed;
   }
   byId("upload").disabled ||= !sourceImage;
@@ -137,11 +140,12 @@ function drawPreview() {
   const sourceWidth = quarterTurn ? sourceImage.naturalHeight : sourceImage.naturalWidth;
   const sourceHeight = quarterTurn ? sourceImage.naturalWidth : sourceImage.naturalHeight;
   const cover = byId("fit").value === "cover";
-  const scale = (cover ? Math.max : Math.min)(canvas.width / sourceWidth, canvas.height / sourceHeight);
+  const zoom = Number(byId("zoom").value) / 100;
+  const scale = (cover ? Math.max : Math.min)(canvas.width / sourceWidth, canvas.height / sourceHeight) * zoom;
   const width = sourceWidth * scale;
   const height = sourceHeight * scale;
-  const x = (canvas.width - width) * (cover ? Number(byId("crop-x").value) / 100 : 0.5);
-  const y = (canvas.height - height) * (cover ? Number(byId("crop-y").value) / 100 : 0.5);
+  const x = (canvas.width - width) * Number(byId("crop-x").value) / 100;
+  const y = (canvas.height - height) * Number(byId("crop-y").value) / 100;
   context.save();
   context.translate(x + width / 2, y + height / 2);
   context.rotate(rotation * Math.PI / 180);
@@ -159,7 +163,7 @@ function drawPreview() {
     }
     context.putImageData(pixels, 0, 0);
   }
-  byId("crop-controls").hidden = !cover;
+  byId("zoom-value").textContent = Math.round(zoom * 100) + "%";
 }
 
 async function showCurrent() {
@@ -181,6 +185,7 @@ async function showCurrent() {
     if (file.size > 40 * 1024 * 1024) throw new Error("The photo exceeds 40 MB. Choose a smaller version.");
     sourceImage = await decodePhoto(file);
     rotation = 0;
+    byId("zoom").value = "100";
     byId("crop-x").value = byId("crop-y").value = "50";
     drawPreview();
     byId("editor").hidden = false;
@@ -208,6 +213,12 @@ function transferPhoto(blob, name) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/photos");
+    const now = new Date();
+    const pad = (value, length = 2) => String(value).padStart(length, "0");
+    // FAT timestamps have no timezone. Record the phone's local wall clock;
+    // milliseconds also enter the generated filename to break 2-second FAT ties.
+    xhr.setRequestHeader("X-FramEInk-Upload-Time", pad(now.getFullYear(), 4) + pad(now.getMonth() + 1) +
+      pad(now.getDate()) + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds()) + pad(now.getMilliseconds(), 3));
     xhr.timeout = 120000;
     xhr.upload.onprogress = event => {
       if (event.lengthComputable) byId("progress").value = 100 * event.loaded / event.total;
@@ -235,6 +246,7 @@ byId("files").addEventListener("change", async event => {
   await showCurrent();
 });
 byId("fit").addEventListener("change", drawPreview);
+byId("zoom").addEventListener("input", drawPreview);
 byId("crop-x").addEventListener("input", drawPreview);
 byId("crop-y").addEventListener("input", drawPreview);
 byId("rotate").addEventListener("click", () => { rotation = (rotation + 90) % 360; drawPreview(); });
@@ -277,6 +289,8 @@ byId("settings-form").addEventListener("submit", async event => {
   setBusy(true);
   try {
     const body = new URLSearchParams(new FormData(event.target));
+    if (!["random", "alphabetical"].includes(body.get("photoOrder")))
+      throw new Error("Choose Random or Alphabetical photo order.");
     if (!/^[0-5]?\d$/.test(body.get("updateMinute") || ""))
       throw new Error("Use a whole update minute from 00 to 59.");
     validateNightPause(body.get("nightPauseStart"), body.get("nightPauseEnd"));
@@ -316,6 +330,7 @@ function updateGalleryControls() {
   const selected = gallerySelection.size;
   const selectedLoaded = galleryPhotos.filter(photo => gallerySelection.has(photo.id)).length;
   byId("refresh-photos").disabled = unavailable;
+  byId("gallery-sort").disabled = byId("gallery-order").disabled = unavailable;
   byId("select-photos").disabled = unavailable || !galleryPhotos.length;
   byId("select-photos").textContent = selectedLoaded && selectedLoaded === galleryPhotos.length ? "Clear loaded" : "Select loaded";
   byId("select-all-photos").disabled = unavailable || !galleryTotalPhotos;
@@ -448,6 +463,12 @@ async function resumeGalleryPreviews() {
   }
 }
 
+function galleryQuery(offset, cursor = null) {
+  const params = new URLSearchParams({offset: String(offset), sort: gallerySort, order: galleryOrder});
+  if (cursor) params.set("cursor", cursor);
+  return "/api/photos?" + params;
+}
+
 async function loadGallery(reset = true) {
   if (!device || !device.sdReady || closed || (!reset && galleryNext === null)) return;
   const offset = reset ? 0 : galleryNext;
@@ -455,7 +476,7 @@ async function loadGallery(reset = true) {
   setBusy(true);
   status("gallery-status", "Loading photos from the SD card…");
   try {
-    const result = await (await request("/api/photos?offset=" + offset)).json();
+    const result = await (await request(galleryQuery(offset, reset ? null : galleryCursor))).json();
     if (result.nextOffset !== null && result.nextOffset <= offset) throw new Error("Invalid gallery batch.");
     if (reset) {
       for (const job of galleryPreviews) {
@@ -470,6 +491,7 @@ async function loadGallery(reset = true) {
       byId("gallery-viewport").scrollTop = 0;
     }
     galleryNext = result.nextOffset;
+    galleryCursor = result.nextCursor || null;
     galleryTotalPhotos = result.totalPhotos;
     galleryListError = null;
     const existing = new Set(galleryPhotos.map(photo => photo.id));
@@ -506,7 +528,9 @@ async function loadGallery(reset = true) {
       galleryPreviews.push(job);
       galleryPreviewJobs.set(thumbnail, job);
       const size = document.createElement("small");
-      size.textContent = Math.max(1, Math.round(photo.size / 1024)) + " KB";
+      const modified = photo.modified ? new Date(photo.modified) : null;
+      size.textContent = Math.max(1, Math.round(photo.size / 1024)) + " KB · " +
+        (modified && !Number.isNaN(modified.getTime()) ? "Modified: " + modified.toLocaleString() : "Modification date unavailable");
       const view = document.createElement("button");
       view.className = "secondary";
       view.textContent = "View photo";
@@ -555,6 +579,13 @@ byId("refresh-photos").addEventListener("click", () => {
   syncGallerySelection();
   return loadGallery();
 });
+for (const id of ["gallery-sort", "gallery-order"]) byId(id).addEventListener("change", () => {
+  if (busy || closed) return;
+  gallerySort = byId("gallery-sort").value;
+  galleryOrder = byId("gallery-order").value;
+  // Retain explicit selected IDs across a display-only reordering.
+  return loadGallery();
+});
 byId("retry-photos").addEventListener("click", () => {
   if (busy || closed || !galleryListError) return;
   return loadGallery(galleryListError.reset);
@@ -578,16 +609,18 @@ byId("select-all-photos").addEventListener("click", async () => {
   setBusy(true);
   const selection = new Map();
   let offset = 0;
+  let cursor = null;
   try {
     // Collect a snapshot of explicit IDs, batch by batch. No unbounded list is
     // allocated on the ESP32, and photos uploaded later are not auto-selected.
     while (true) {
-      const result = await (await request("/api/photos?offset=" + offset)).json();
+      const result = await (await request(galleryQuery(offset, cursor))).json();
       for (const photo of result.photos) selection.set(photo.id, photo);
       status("gallery-status", "Selecting all photos… " + selection.size + " of " + result.totalPhotos + ".");
       if (result.nextOffset === null) break;
       if (result.nextOffset <= offset) throw new Error("Invalid gallery batch.");
       offset = result.nextOffset;
+      cursor = result.nextCursor || null;
     }
     gallerySelection.clear();
     for (const [id, photo] of selection) gallerySelection.set(id, photo);
@@ -633,6 +666,9 @@ byId("delete-photos").addEventListener("click", async () => {
     byId("nightPauseStart").value = settings.nightPauseStart || "23:00";
     byId("nightPauseEnd").value = settings.nightPauseEnd || "05:00";
     byId("updateMinute").value = String(settings.updateMinute ?? "00").padStart(2, "0");
+    byId("photoOrder").value = settings.photoOrder === "alphabetical" ? "alphabetical" : "random";
+    byId("gallery-sort").value = gallerySort;
+    byId("gallery-order").value = galleryOrder;
     byId("settings").open = !settings.ssid;
     byId("device").textContent = device.name + " · " + device.width + " × " + device.height + " px" + (device.grayscale ? " · grayscale" : " · color");
     byId("gallery-folder").textContent = "SD card · " + device.directory + ". View photos or select them for deletion.";

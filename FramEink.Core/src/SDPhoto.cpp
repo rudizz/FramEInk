@@ -8,18 +8,23 @@
 
 namespace {
 
-bool isPhoto(SdFile &file)
+bool isPhoto(SdFile &file, char (&name)[frameink::photoFileNameSize])
 {
     if (!file.isFile() || file.fileSize() == 0 || file.isHidden())
         return false;
-    char name[100];
-    file.getName(name, sizeof(name));
-    if (name[0] == '.')
+    if (file.getName(name, sizeof(name)) == 0 || name[0] == '.')
         return false;
     const char *extension = strrchr(name, '.');
     return extension != nullptr &&
         (strcasecmp(extension, ".jpg") == 0 || strcasecmp(extension, ".jpeg") == 0 ||
          strcasecmp(extension, ".png") == 0 || strcasecmp(extension, ".bmp") == 0);
+}
+
+int comparePhotoNames(const char *left, const char *right)
+{
+    const int folded = strcasecmp(left, right);
+    // Stable strict order even for names that differ only in case.
+    return folded != 0 ? folded : strcmp(left, right);
 }
 
 } // namespace
@@ -49,7 +54,8 @@ bool SDPhotoClass::getFilePath(
 	char* filePath,
 	size_t filePathSize,
 	const char* dirName,
-	uint& counter,
+	frameink::PhotoSequenceState &sequence,
+	frameink::PhotoOrder order,
 	uint& availableFileCount)
 {
 	if (filePath == nullptr || filePathSize == 0)
@@ -60,67 +66,58 @@ bool SDPhotoClass::getFilePath(
 
 	SdFile dir;
 	SdFile file;
-	char fileName[100] = {};
+	char fileName[frameink::photoFileNameSize] = {};
+	char selected[frameink::photoFileNameSize] = {};
+	char first[frameink::photoFileNameSize] = {};
 
 	if (!dir.open(dirName))
 		return false;
 
-	dir.rewind();
 	while (file.openNext(&dir, O_RDONLY))
 	{
-        if (isPhoto(file))
-			++availableFileCount;
+        if (isPhoto(file, fileName))
+        {
+            ++availableFileCount;
+            if (order != frameink::PhotoOrder::Alphabetical)
+            {
+                // Reservoir sampling: one SD scan and constant RAM, with the
+                // same chance for every photo regardless of directory order.
+                if (random(availableFileCount) == 0)
+                    strcpy(selected, fileName);
+            }
+            else
+            {
+                if (first[0] == 0 || comparePhotoNames(fileName, first) < 0)
+                    strcpy(first, fileName);
+                if (comparePhotoNames(fileName, sequence.lastFileName) > 0 &&
+                    (selected[0] == 0 || comparePhotoNames(fileName, selected) < 0))
+                    strcpy(selected, fileName);
+            }
+        }
 		file.close();
 	}
+	dir.close();
 
 	if (DEBUG_PRINT)
 		Serial.printf("fileCount: %u\n", availableFileCount);
 
 	if (availableFileCount == 0)
 	{
-		dir.close();
 		return false;
 	}
 
-	const uint selectedIndex =
-		counter == static_cast<uint>(-1)
-			? static_cast<uint>(random(availableFileCount))
-			: counter % availableFileCount;
-
-	if (DEBUG_PRINT)
-		Serial.printf("Photo index: %u\n", selectedIndex);
-
-	dir.rewind();
-	uint currentIndex = 0;
-	bool fileFound = false;
-	while (file.openNext(&dir, O_RDONLY))
-	{
-        const bool validPhoto = isPhoto(file);
-		if (validPhoto && currentIndex == selectedIndex)
-		{
-			file.getName(fileName, sizeof(fileName));
-			fileFound = true;
-			file.close();
-			break;
-		}
-
-		if (validPhoto)
-			++currentIndex;
-		file.close();
-	}
-	dir.close();
-
-	if (!fileFound)
-		return false;
-
-	const int written = snprintf(filePath, filePathSize, "%s%s", dirName, fileName);
+    if (selected[0] == 0)
+    {
+        strcpy(selected, first); // Alphabetical wrap after the last file.
+    }
+	const int written = snprintf(filePath, filePathSize, "%s%s", dirName, selected);
 	if (written < 0 || static_cast<size_t>(written) >= filePathSize)
 	{
 		filePath[0] = 0;
 		return false;
 	}
 
-	counter = (selectedIndex + 1) % availableFileCount;
+	strcpy(sequence.lastFileName, selected);
 	return true;
 }
 
@@ -136,7 +133,8 @@ void SDPhotoClass::showError(const char* message, const char* dirName)
 		display->println();
 }
 
-void SDPhotoClass::drawImageFromSD(int x, int y, PhotoOrientation orientation, uint &counter)
+void SDPhotoClass::drawImageFromSD(int x, int y, PhotoOrientation orientation,
+    frameink::PhotoSequenceState &sequence, frameink::PhotoOrder order)
 {
 	if (!initOk)
 	{
@@ -162,7 +160,7 @@ void SDPhotoClass::drawImageFromSD(int x, int y, PhotoOrientation orientation, u
 
 	while (true)
 	{
-		if (!getFilePath(filePath, sizeof(filePath), dirName, counter, availableFileCount))
+		if (!getFilePath(filePath, sizeof(filePath), dirName, sequence, order, availableFileCount))
 		{
 			if (DEBUG_PRINT)
 				Serial.println("Warning: image not found!");
@@ -184,6 +182,9 @@ void SDPhotoClass::drawImageFromSD(int x, int y, PhotoOrientation orientation, u
 			Serial.println("Draw Image false");
 
 		++failedAttempts;
+        // After a random first choice, visit the remaining files in name order
+        // so a corrupt photo cannot cause retries of the same file indefinitely.
+        order = frameink::PhotoOrder::Alphabetical;
 		if (failedAttempts >= availableFileCount)
 		{
 			showError("Unable to draw photos in ", dirName);

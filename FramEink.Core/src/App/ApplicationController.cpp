@@ -56,7 +56,7 @@ RefreshResult ApplicationController::executeCycle(ApplicationRuntime &runtime, I
 
     if (result.mode == RefreshMode::Photo)
     {
-        renderer.renderPhoto(runtime);
+        renderer.renderPhoto(runtime, dashboard_.deviceConfiguration.photoOrder);
     }
     else
     {

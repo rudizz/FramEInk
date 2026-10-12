@@ -158,12 +158,11 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
         display_.display();
     }
 
-    void renderPhoto(frameink::ApplicationRuntime &runtime) override
+    void renderPhoto(frameink::ApplicationRuntime &runtime, frameink::PhotoOrder order) override
     {
-        runtime.counterPortrait = static_cast<unsigned int>(-1);
         display_.clearDisplay();
         if (sdPhoto_ != nullptr)
-            sdPhoto_->drawImageFromSD(0, 0, SDPhotoClass::PhotoOrientation::portrait, runtime.counterPortrait);
+            sdPhoto_->drawImageFromSD(0, 0, SDPhotoClass::PhotoOrientation::portrait, runtime.portraitPhotos, order);
     }
 
     void renderDashboard(const frameink::DashboardModel &model, frameink::ApplicationRuntime &runtime) override
@@ -185,9 +184,9 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
 
         if (rows_ < 2)
         {
-            runtime.counterLandscape = static_cast<unsigned int>(-1);
             if (sdPhoto_ != nullptr)
-                sdPhoto_->drawImageFromSD(0, heightPhoto_ + 3, SDPhotoClass::PhotoOrientation::landscape, runtime.counterLandscape);
+                sdPhoto_->drawImageFromSD(0, heightPhoto_ + 3, SDPhotoClass::PhotoOrientation::landscape,
+                    runtime.landscapePhotos, model.deviceConfiguration.photoOrder);
         }
     }
 

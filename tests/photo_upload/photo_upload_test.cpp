@@ -56,6 +56,8 @@ void galleryTests() {
         const std::string folder = color ? "/landscape" : "/portrait";
         f.server.call("/api/photos");
         assert(f.server.status == 200 && std::string(f.server.body.c_str()) == "{\"photos\":[],\"nextOffset\":null,\"pageSize\":10,\"totalPhotos\":0,\"totalPages\":0}");
+        f.server.arguments["sort"] = "name";
+        f.server.arguments["order"] = "asc";
         f.storage.directories.insert(folder);
         for (int i = 0; i < 23; ++i) {
             char name[24];
@@ -168,8 +170,97 @@ void galleryTests() {
     std::cout << "Photo gallery: listing, pagination, preview, deletion, path safety and SD failures passed.\n";
 }
 
+std::string jsonValue(const std::string &body, const std::string &key) {
+    const std::string marker = "\"" + key + "\":\"";
+    const size_t start = body.find(marker);
+    assert(start != std::string::npos);
+    const size_t value = start + marker.size();
+    return body.substr(value, body.find('"', value) - value);
+}
+
+void sortAndTimestampTests() {
+    for (bool color : {false, true}) {
+        Fixture f(true, color);
+        const std::string folder = color ? "/landscape" : "/portrait";
+        f.storage.directories.insert(folder);
+        // Name and date order are deliberately different, and span three batches.
+        std::vector<std::string> byName, byDate;
+        for (unsigned i = 0; i < 23; ++i) {
+            char name[24];
+            snprintf(name, sizeof(name), "image%02u.jpg", i);
+            const std::string path = folder + "/" + name;
+            f.storage.files[path] = jpeg();
+            f.storage.modified[path] = {FS_DATE(2026, 10, 12), FS_TIME(12, (i * 7) % 23, 0)};
+            byName.emplace_back(name);
+        }
+        byDate = byName;
+        std::sort(byDate.begin(), byDate.end(), [&](const std::string &a, const std::string &b) {
+            return f.storage.modified.at(folder + "/" + a).second > f.storage.modified.at(folder + "/" + b).second;
+        });
+        for (const char *sort : {"modified", "name"}) for (const char *order : {"asc", "desc"}) {
+            auto expected = std::string(sort) == "name" ? byName : byDate;
+            if ((std::string(sort) == "name") == (std::string(order) == "desc")) std::reverse(expected.begin(), expected.end());
+            f.server.arguments.clear();
+            f.server.arguments["sort"] = sort;
+            f.server.arguments["order"] = order;
+            size_t offset = 0;
+            while (offset < expected.size()) {
+                f.server.arguments["offset"] = std::to_string(offset);
+                const unsigned scans = f.storage.directoryScans;
+                f.server.call("/api/photos");
+                assert(f.server.status == 200 && f.storage.directoryScans == scans + 1);
+                const std::string body = f.server.body.c_str();
+                size_t previous = 0;
+                for (size_t i = offset; i < std::min(offset + 10, expected.size()); ++i) {
+                    const size_t position = body.find("\"name\":\"" + expected[i] + "\"");
+                    assert(position != std::string::npos && position >= previous);
+                    previous = position;
+                }
+                assert(body.find("\"modified\":\"2026-10-12T12:") != std::string::npos);
+                if (offset + 10 < expected.size()) f.server.arguments["cursor"] = jsonValue(body, "nextCursor");
+                offset += 10;
+            }
+        }
+        f.server.arguments.clear();
+        f.server.call("/api/photos"); // Default is last modified DESC, not FAT/name order.
+        assert(jsonValue(f.server.body.c_str(), "name") == byDate.front());
+        for (const char *bad : {"random", "Name", "date;drop"}) {
+            f.server.arguments = {{"sort", bad}};
+            f.server.call("/api/photos"); assert(f.server.status == 400);
+        }
+        for (const char *bad : {"up", "DESC", "random"}) {
+            f.server.arguments = {{"order", bad}};
+            f.server.call("/api/photos"); assert(f.server.status == 400);
+        }
+        for (const char *bad : {"x", "00000000", "zzzzzzzz61612e6a7067", "0000000000", "ffffffff612e6a7067"}) {
+            f.server.arguments = {{"cursor", bad}};
+            f.server.call("/api/photos"); assert(f.server.status == 400);
+        }
+    }
+    // Filename milliseconds break FAT's two-second timestamp ties: last upload first.
+    Fixture f;
+    for (const char *stamp : {"20261012120001100", "20261012120001900"}) {
+        f.server.requestHeaders["X-FramEInk-Upload-Time"] = stamp;
+        f.receive(); f.server.result(); assert(f.server.status == 201);
+    }
+    f.server.call("/api/photos");
+    const std::string body = f.server.body.c_str();
+    assert(jsonValue(body, "name").find("photo_20261012120001900_") == 0);
+    assert(body.find("\"modified\":\"2026-10-12T12:00:00\"") != std::string::npos);
+    for (const char *stamp : {"bad", "20260229120000000", "20261301120000000", "21000101120000000", "20261012240000000", "20261012120060000"}) {
+        Fixture invalid;
+        invalid.server.requestHeaders["X-FramEInk-Upload-Time"] = stamp;
+        invalid.receive(); invalid.rejected(400);
+    }
+    { Fixture failed; failed.storage.failTimestamp = true; failed.receive(); failed.rejected(507); }
+    { Fixture leap; leap.server.requestHeaders["X-FramEInk-Upload-Time"] = "20240229120000000";
+      leap.receive(); leap.server.result(); assert(leap.server.status == 201); }
+    std::cout << "Gallery sort: global name/date asc/desc, bounded cursor batches, upload timestamps and validation passed.\n";
+}
+
 int main(int argc, char **argv) {
     galleryTests();
+    sortAndTimestampTests();
     for (bool color : {false, true}) {
         Fixture f(true, color);
         const auto data = color ? jpeg(600,448) : jpeg();

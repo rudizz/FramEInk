@@ -13,8 +13,19 @@ class Element {
   setAttribute() {}
   removeAttribute(name) { delete this[name]; }
   showModal() { this.open = true; }
-  getContext() { return {fillRect() {}, drawImage() {}}; }
-  toBlob(callback) { callback({thumbnail: true}); }
+  getContext() {
+    if (!this.context) {
+      const calls = [];
+      this.context = {calls, fillRect(...args) { calls.push(["fillRect", ...args]); },
+        drawImage(...args) { calls.push(["drawImage", ...args]); },
+        save() {}, restore() {}, translate(...args) { calls.push(["translate", ...args]); },
+        rotate(...args) { calls.push(["rotate", ...args]); },
+        getImageData(...args) { calls.push(["getImageData", ...args]); return {data: new Uint8ClampedArray([255, 0, 0, 255])}; },
+        putImageData(...args) { calls.push(["putImageData", ...args]); }};
+    }
+    return this.context;
+  }
+  toBlob(callback, type) { callback({thumbnail: true, type, size: 100}); }
   append(...children) { this.children.push(...children); }
   appendChild(child) { this.append(child); }
   replaceChildren() { this.children = []; }
@@ -28,15 +39,17 @@ class Element {
   }
 }
 
-async function harness({withObserver = true, settings = {ssid: "Test WiFi"}} = {}) {
+async function harness({withObserver = true, settings = {ssid: "Test WiFi"},
+  target = {width: 600, height: 448, sdReady: true, directory: "/landscape", maxPhotoBytes: 2 * 1024 * 1024}} = {}) {
   const elements = new Map();
   const byId = id => {
     if (!elements.has(id)) elements.set(id, new Element());
     return elements.get(id);
   };
-  const state = {photos: Array.from({length: 23}, (_, i) => ({id: "id" + i, name: "photo" + i + ".jpg", size: 1024})),
+  const state = {photos: Array.from({length: 23}, (_, i) => ({id: "id" + i, name: "photo" + i + ".jpg", size: 1024,
+      modified: new Date(Date.UTC(2026, 9, 12, 12) - i * 2000).toISOString().slice(0, 19)})),
     offsets: [], images: [], aborted: [], deleted: [], confirm: false, confirmations: [], failOffset: null,
-    frames: [], endVisibleAt: null, deferred: new Set(), revoked: [], observer: null, savedSettings: []};
+    frames: [], endVisibleAt: null, deferred: new Set(), revoked: [], observer: null, savedSettings: [], listQueries: [], uploads: []};
   const documentListeners = {};
   const response = (body, ok = true) => ({ok, json: async () => body, text: async () => String(body), blob: async () => body});
   const document = {hidden: false, getElementById: byId, createElement: tag => new Element(tag),
@@ -56,12 +69,21 @@ async function harness({withObserver = true, settings = {ssid: "Test WiFi"}} = {
     document, window: {innerHeight: 800, innerWidth: 600, addEventListener() {},
       confirm: text => { state.confirmations.push(text); return state.confirm; }},
     IntersectionObserver: withObserver ? Observer : undefined, URLSearchParams, AbortController,
-    FormData: class { constructor(form) { this.values = form.values; } [Symbol.iterator]() { return Object.entries(this.values)[Symbol.iterator](); } },
+    FormData: class { constructor(form) { this.values = form ? form.values : {}; }
+      append(key, value, name) { this.values[key] = {value, name}; }
+      [Symbol.iterator]() { return Object.entries(this.values)[Symbol.iterator](); } },
+    XMLHttpRequest: class {
+      constructor() { this.upload = {}; this.headers = {}; }
+      open(method, url) { assert.equal(method, "POST"); assert.equal(url, "/api/photos"); }
+      setRequestHeader(key, value) { this.headers[key] = value; }
+      send(body) { state.uploads.push({headers: this.headers, body: body.values});
+        this.status = 201; this.responseText = '{"path":"/landscape/test.jpg"}'; this.onload(); }
+    },
     URL: {createObjectURL: () => "blob:thumbnail-" + state.images.length, revokeObjectURL: url => state.revoked.push(url)},
     requestAnimationFrame: callback => { state.frames.push(callback); return state.frames.length; },
     setInterval: () => 1, clearInterval() {}, setTimeout: () => 1, clearTimeout() {},
     fetch: async (url, options = {}) => {
-      if (url === "/api/device") return response({width: 600, height: 448, sdReady: true, directory: "/landscape"});
+      if (url === "/api/device") return response(target);
       if (url === "/api/settings") {
         if (options.method === "POST") {
           state.savedSettings.push(Object.fromEntries(options.body));
@@ -71,11 +93,23 @@ async function harness({withObserver = true, settings = {ssid: "Test WiFi"}} = {
       }
       if (url === "/api/ping") return response("");
       if (url.startsWith("/api/photos?")) {
-        const offset = Number(url.split("=")[1]);
+        const params = new URLSearchParams(url.split("?")[1]);
+        const offset = Number(params.get("offset"));
         state.offsets.push(offset);
+        state.listQueries.push(Object.fromEntries(params));
         if (offset === state.failOffset) return response("Simulated listing failure", false);
-        return response({photos: state.photos.slice(offset, offset + 10), nextOffset: offset + 10 < state.photos.length ? offset + 10 : null,
-          totalPhotos: state.photos.length, totalPages: Math.ceil(state.photos.length / 10), pageSize: 10});
+        const sorted = [...state.photos].sort((a, b) => {
+          let comparison = 0;
+          if (params.get("sort") !== "name") comparison = (a.modified || "").localeCompare(b.modified || "");
+          comparison ||= a.name.toLowerCase().localeCompare(b.name.toLowerCase()) || a.name.localeCompare(b.name);
+          return params.get("order") === "asc" ? comparison : -comparison;
+        });
+        const start = params.has("cursor") ? sorted.findIndex(photo => photo.id === params.get("cursor")) + 1 : offset;
+        const page = sorted.slice(start, start + 10);
+        const more = start + 10 < sorted.length;
+        return response({photos: page, nextOffset: more ? offset + page.length : null,
+          nextCursor: more ? page.at(-1).id : null, totalPhotos: state.photos.length,
+          totalPages: Math.ceil(state.photos.length / 10), pageSize: 10});
       }
       if (url.startsWith("/api/photo?")) {
         const id = url.split("=")[1];
@@ -131,22 +165,27 @@ async function harness({withObserver = true, settings = {ssid: "Test WiFi"}} = {
 }
 
 async function run() {
+  await editorTests();
+  await gallerySortingTests();
   const lazy = await harness();
   assert.equal(lazy.byId("nightPauseStart").value, "23:00");
   assert.equal(lazy.byId("nightPauseEnd").value, "05:00");
   assert.equal(lazy.byId("updateMinute").value, "00");
-  const settings = await harness({settings: {ssid: "Test WiFi", nightPauseStart: "22:30", nightPauseEnd: "06:15", updateMinute: "45"}});
+  assert.equal(lazy.byId("photoOrder").value, "random");
+  const settings = await harness({settings: {ssid: "Test WiFi", nightPauseStart: "22:30", nightPauseEnd: "06:15", updateMinute: "45", photoOrder: "alphabetical"}});
   assert.equal(settings.byId("nightPauseStart").value, "22:30");
   assert.equal(settings.byId("nightPauseEnd").value, "06:15");
   assert.equal(settings.byId("updateMinute").value, "45");
-  const save = async (start, end, minute = "45") => settings.byId("settings-form").listeners.submit({preventDefault() {}, target: {
-    values: {ssid: "Test WiFi", password: "", latitude: "48.1", longitude: "11.5", calendarUrl: "", nightPauseStart: start, nightPauseEnd: end, updateMinute: minute}
+  assert.equal(settings.byId("photoOrder").value, "alphabetical");
+  const save = async (start, end, minute = "45", order = "alphabetical") => settings.byId("settings-form").listeners.submit({preventDefault() {}, target: {
+    values: {ssid: "Test WiFi", password: "", latitude: "48.1", longitude: "11.5", calendarUrl: "", nightPauseStart: start, nightPauseEnd: end, updateMinute: minute, photoOrder: order}
   }});
   await save("22:30", "06:15");
   assert.equal(settings.state.savedSettings.length, 1);
   assert.equal(settings.state.savedSettings[0].nightPauseStart, "22:30");
   assert.equal(settings.state.savedSettings[0].nightPauseEnd, "06:15");
   assert.equal(settings.state.savedSettings[0].updateMinute, "45");
+  assert.equal(settings.state.savedSettings[0].photoOrder, "alphabetical");
   for (const [start, end] of [["24:00", "05:00"], ["23:00", "06:60"], ["00:00", "23:01"], ["", "05:00"]]) {
     await save(start, end);
     assert.equal(settings.state.savedSettings.length, 1);
@@ -165,6 +204,17 @@ async function run() {
   }
   const midnightSettings = await harness({settings: {ssid: "Test WiFi", updateMinute: 0}});
   assert.equal(midnightSettings.byId("updateMinute").value, "00");
+  let saves = settings.state.savedSettings.length;
+  for (const order of ["", "Random", "ALPHABETICAL", "0", "1", "date", " random", "random "]) {
+    await save("23:00", "05:00", "00", order);
+    assert.equal(settings.state.savedSettings.length, saves);
+    assert(settings.byId("settings-status").textContent.includes("photo order"));
+  }
+  for (const order of ["random", "alphabetical"]) {
+    await save("23:00", "05:00", "00", order);
+    assert.equal(settings.state.savedSettings.length, ++saves);
+    assert.equal(settings.state.savedSettings.at(-1).photoOrder, order);
+  }
   await lazy.pump();
   assert.deepEqual(lazy.state.offsets, [0]);
   assert.equal(lazy.boxes().length, 10);
@@ -276,6 +326,88 @@ async function run() {
   await fallback.pump();
   assert.deepEqual(fallback.state.images, ["id0"]);
   console.log("Portal gallery: lazy visibility, infinite scroll, cache, cancellation, retry, selection and deletion passed.");
+}
+
+async function gallerySortingTests() {
+  const gallery = await harness();
+  assert.equal(gallery.byId("gallery-sort").value, "modified");
+  assert.equal(gallery.byId("gallery-order").value, "desc");
+  assert.deepEqual(gallery.state.images, []);
+  assert.deepEqual(gallery.state.listQueries[0], {offset: "0", sort: "modified", order: "desc"});
+  gallery.check(0, true);
+  for (const sort of ["name", "modified"]) for (const order of ["asc", "desc"]) {
+    gallery.byId("gallery-sort").value = sort;
+    gallery.byId("gallery-order").value = order;
+    await gallery.byId("gallery-sort").listeners.change();
+    assert.equal(gallery.byId("gallery-viewport").scrollTop, 0);
+    assert.equal(gallery.count(), 1); // Reordering doesn't lose explicit selections.
+    const query = gallery.state.listQueries.at(-1);
+    assert.deepEqual(query, {offset: "0", sort, order});
+    const expected = [...gallery.state.photos].sort((a, b) => {
+      const comparison = sort === "modified" ? a.modified.localeCompare(b.modified) : a.name.localeCompare(b.name);
+      return order === "asc" ? comparison : -comparison;
+    }).map(photo => photo.id);
+    assert.deepEqual(Array.from(gallery.jobs(), job => job.photo.id), expected.slice(0, 10));
+    await gallery.append();
+    assert.deepEqual(Array.from(gallery.jobs(), job => job.photo.id), expected.slice(0, 20));
+    assert.equal(gallery.state.listQueries.at(-1).cursor, expected[9]);
+    await gallery.append();
+    assert.deepEqual(Array.from(gallery.jobs(), job => job.photo.id), expected);
+  }
+  assert.deepEqual(gallery.state.images, []); // Sorting downloads names/dates, never off-screen images.
+  await gallery.click("select-all-photos");
+  assert.equal(gallery.count(), 23);
+  const batches = gallery.state.listQueries.slice(-3);
+  assert(batches.every(query => query.sort === "modified" && query.order === "desc"));
+  assert(batches[1].cursor && batches[2].cursor);
+}
+
+async function editorTests() {
+  for (const target of [{width: 600, height: 448, grayscale: false, sdReady: true},
+    {width: 825, height: 1200, grayscale: true, sdReady: true}]) {
+    target.maxPhotoBytes = 2 * 1024 * 1024;
+    const editor = await harness({target});
+    const preview = editor.byId("preview");
+    const calls = preview.getContext().calls;
+    const close = (actual, expected) => assert(Math.abs(actual - expected) < 1e-8, actual + " != " + expected);
+    vm.runInContext("sourceImage = {naturalWidth: 2000, naturalHeight: 1000};", editor.context);
+    for (const fit of ["contain", "cover"]) for (const zoom of [50, 100, 175, 400])
+      for (const rotation of [0, 90, 180, 270]) for (const pan of [0, 50, 100]) {
+        editor.byId("fit").value = fit;
+        editor.byId("zoom").value = String(zoom);
+        editor.byId("crop-x").value = editor.byId("crop-y").value = String(pan);
+        calls.length = 0;
+        vm.runInContext("rotation = " + rotation + "; drawPreview();", editor.context);
+        assert.equal(preview.width, target.width);
+        assert.equal(preview.height, target.height);
+        assert.equal(editor.byId("zoom-value").textContent, zoom + "%");
+        const draw = calls.find(call => call[0] === "drawImage");
+        const translate = calls.find(call => call[0] === "translate");
+        const width = rotation % 180 ? draw[5] : draw[4];
+        const height = rotation % 180 ? draw[4] : draw[5];
+        close(translate[1] - width / 2, (target.width - width) * pan / 100);
+        close(translate[2] - height / 2, (target.height - height) * pan / 100);
+        close(draw[4] / draw[5], 2); // No distortion, even after rotation/zoom.
+        close(calls.find(call => call[0] === "rotate")[1], rotation * Math.PI / 180);
+        if (zoom === 100) {
+          if (fit === "contain") assert(width <= target.width + 1e-8 && height <= target.height + 1e-8);
+          else assert(width >= target.width - 1e-8 && height >= target.height - 1e-8);
+        }
+        assert.equal(calls.some(call => call[0] === "putImageData"), target.grayscale);
+      }
+    // A new queued photo resets zoom/pan; export is the same target-sized canvas.
+    await editor.byId("files").listeners.change({target: {files: [{name: "phone.jpg", size: 100}], value: ""}});
+    assert.equal(editor.byId("zoom").value, "100");
+    assert.equal(editor.byId("crop-x").value, "50");
+    assert.equal(editor.byId("crop-y").value, "50");
+    editor.byId("zoom").value = "225";
+    editor.byId("zoom").listeners.input();
+    assert.equal(editor.byId("zoom-value").textContent, "225%");
+    await editor.click("upload");
+    assert.equal(editor.state.uploads.length, 1);
+    assert.equal(editor.state.uploads[0].body.photo.value.type, "image/jpeg");
+    assert.match(editor.state.uploads[0].headers["X-FramEInk-Upload-Time"], /^\d{17}$/);
+  }
 }
 module.exports = {run};
 if (require.main === module) run().catch(error => { console.error(error); process.exitCode = 1; });

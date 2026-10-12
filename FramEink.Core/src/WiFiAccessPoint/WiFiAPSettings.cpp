@@ -63,6 +63,7 @@ void WiFiAPSettingsClass::sendSettings()
     char minute[3];
     snprintf(minute, sizeof(minute), "%02u", unsigned(updateMinute));
     document["updateMinute"] = minute;
+    document["photoOrder"] = frameink::photoOrderName(photoOrder);
     String body;
     serializeJson(document, body);
     server_.sendHeader("Cache-Control", "no-store");
@@ -77,6 +78,13 @@ void WiFiAPSettingsClass::saveSettings()
     String latitude = server_.arg("latitude");
     String longitude = server_.arg("longitude");
     String calendar = server_.arg("calendarUrl");
+    frameink::PhotoOrder order = photoOrder;
+    if (server_.hasArg("photoOrder") &&
+        !frameink::parsePhotoOrder(server_.arg("photoOrder").c_str(), order))
+    {
+        server_.send(400, "text/plain; charset=utf-8", "Choose Random or Alphabetical photo order.");
+        return;
+    }
     uint8_t minute = updateMinute;
     if (server_.hasArg("updateMinute") &&
         !frameink::parseUpdateMinute(server_.arg("updateMinute").c_str(), minute))
@@ -101,7 +109,7 @@ void WiFiAPSettingsClass::saveSettings()
     char *longitudeEnd = nullptr;
     const double lat = strtod(latitude.c_str(), &latitudeEnd);
     const double lon = strtod(longitude.c_str(), &longitudeEnd);
-    const size_t size = 5 + frameink::nightPauseStorageBytes + frameink::updateMinuteStorageBytes +
+    const size_t size = 5 + frameink::nightPauseStorageBytes + frameink::updateMinuteStorageBytes + frameink::photoOrderStorageBytes +
         ssid.length() + password.length() + latitude.length() + longitude.length() + calendar.length();
 
     if (ssid.length() == 0 || ssid.length() > 32 || password.length() > 63 ||
@@ -117,6 +125,7 @@ void WiFiAPSettingsClass::saveSettings()
     const String previous[] = {SSID_User, PWD_User, Latitude_User, Longitude_User, ICALID_User};
     const frameink::NightPause previousPause = nightPause;
     const uint8_t previousMinute = updateMinute;
+    const frameink::PhotoOrder previousOrder = photoOrder;
     SSID_User = ssid;
     PWD_User = password;
     Latitude_User = latitude;
@@ -124,6 +133,7 @@ void WiFiAPSettingsClass::saveSettings()
     ICALID_User = calendar;
     nightPause = pause;
     updateMinute = minute;
+    photoOrder = order;
     if (!writeEEPROM())
     {
         SSID_User = previous[0];
@@ -133,6 +143,7 @@ void WiFiAPSettingsClass::saveSettings()
         ICALID_User = previous[4];
         nightPause = previousPause;
         updateMinute = previousMinute;
+        photoOrder = previousOrder;
         server_.send(500, "text/plain; charset=utf-8", "Unable to save the settings.");
         return;
     }
@@ -169,6 +180,8 @@ bool WiFiAPSettingsClass::writeEEPROM()
     }
     return frameink::writeNightPause(EEPROM, offset, EEPROM_SIZE, nightPause) &&
         frameink::writeUpdateMinute(EEPROM, offset + frameink::nightPauseStorageBytes, EEPROM_SIZE, updateMinute) &&
+        frameink::writePhotoOrder(EEPROM, offset + frameink::nightPauseStorageBytes + frameink::updateMinuteStorageBytes,
+            EEPROM_SIZE, photoOrder) &&
         EEPROM.commit();
 }
 
@@ -202,4 +215,6 @@ void WiFiAPSettingsClass::readEEPROM()
     ICALID_User = values[4];
     nightPause = frameink::readNightPause(EEPROM, offset, EEPROM_SIZE);
     updateMinute = frameink::readUpdateMinute(EEPROM, offset + frameink::nightPauseStorageBytes, EEPROM_SIZE);
+    photoOrder = frameink::readPhotoOrder(EEPROM, offset + frameink::nightPauseStorageBytes + frameink::updateMinuteStorageBytes,
+        EEPROM_SIZE);
 }

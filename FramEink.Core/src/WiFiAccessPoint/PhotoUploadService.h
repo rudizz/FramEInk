@@ -41,6 +41,7 @@ class PhotoUploadService
     bool uploading_ = false;
     bool fileSeen_ = false;
     bool uploadComplete_ = false;
+    char uploadTimestamp_[18] = {}; // Phone-local YYYYMMDDhhmmssSSS; FAT has no timezone.
     int status_ = 400;
 };
 

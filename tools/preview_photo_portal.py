@@ -6,12 +6,14 @@ python3 tools/preview_photo_portal.py --model color --port 8766
 """
 
 import argparse
+from datetime import datetime
 from email.parser import BytesParser
 from email.policy import default
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 from pathlib import Path
 import mimetypes
+import os
 import tempfile
 from urllib.parse import parse_qs
 
@@ -53,7 +55,7 @@ def main():
               "grayscale": portrait, "directory": "/portrait" if portrait else "/landscape",
               "sdReady": True, "maxPhotoBytes": 2 * 1024 * 1024}
     settings = {"ssid": "Test WiFi", "password": "", "latitude": "48.1",
-                "longitude": "11.5", "calendarUrl": "", "nightPauseStart": "23:00", "nightPauseEnd": "05:00", "updateMinute": "00"}
+                "longitude": "11.5", "calendarUrl": "", "nightPauseStart": "23:00", "nightPauseEnd": "05:00", "updateMinute": "00", "photoOrder": "random"}
     output = Path(tempfile.mkdtemp(prefix="frameink-portal-preview-"))
     if args.seed_photo:
         for index in range(args.seed_count):
@@ -100,9 +102,26 @@ def main():
             elif route == "/api/photos":
                 params = parse_qs(self.path.partition("?")[2])
                 offset = int(params.get("offset", ["0"])[0])
-                photos = sorted(p for p in output.iterdir() if p.is_file() and not p.name.startswith(".") and p.suffix.lower() in (".jpg", ".jpeg", ".png", ".bmp"))
-                page = photos[offset:offset + 10]
-                self.reply(200, json.dumps({"photos": [{"id": p.name.encode().hex(), "name": p.name, "size": p.stat().st_size} for p in page], "nextOffset": offset + 10 if offset + 10 < len(photos) else None, "pageSize": 10, "totalPhotos": len(photos), "totalPages": (len(photos) + 9) // 10}), "application/json")
+                sort, order = params.get("sort", ["modified"])[0], params.get("order", ["desc"])[0]
+                if sort not in ("name", "modified") or order not in ("asc", "desc"):
+                    self.reply(400, "Invalid gallery sort order.")
+                    return
+                def modified(path):
+                    stamp = datetime.fromtimestamp(path.stat().st_mtime)
+                    packed = ((stamp.year - 1980) << 25) | (stamp.month << 21) | (stamp.day << 16) | (stamp.hour << 11) | (stamp.minute << 5) | (stamp.second // 2)
+                    return packed, stamp.replace(second=stamp.second // 2 * 2, microsecond=0).isoformat()
+                def key(path):
+                    return ((modified(path)[0],) if sort == "modified" else ()) + (path.name.lower(), path.name)
+                photos = sorted((p for p in output.iterdir() if p.is_file() and not p.name.startswith(".") and p.suffix.lower() in (".jpg", ".jpeg", ".png", ".bmp")), key=key, reverse=order == "desc")
+                available = photos[offset:]
+                if params.get("cursor"):
+                    cursor = params["cursor"][0]
+                    packed, name = int(cursor[:8], 16), bytes.fromhex(cursor[8:]).decode()
+                    cursor_key = ((packed,) if sort == "modified" else ()) + (name.lower(), name)
+                    available = [p for p in photos if (key(p) > cursor_key if order == "asc" else key(p) < cursor_key)]
+                page = available[:10]
+                more = len(available) > len(page)
+                self.reply(200, json.dumps({"photos": [{"id": p.name.encode().hex(), "name": p.name, "size": p.stat().st_size, "modified": modified(p)[1]} for p in page], "nextOffset": offset + len(page) if more else None, "nextCursor": f"{modified(page[-1])[0]:08x}" + page[-1].name.encode().hex() if more else None, "pageSize": 10, "totalPhotos": len(photos), "totalPages": (len(photos) + 9) // 10}), "application/json")
             elif route == "/api/photo":
                 params = parse_qs(self.path.partition("?")[2])
                 photo = self.selected_photo(params.get("id", [""])[0])
@@ -146,11 +165,26 @@ def main():
                 except ValueError as error:
                     self.reply(422, str(error))
                     return
+                stamp = self.headers.get("X-FramEInk-Upload-Time", "")
+                uploaded = None
+                if stamp:
+                    try:
+                        if len(stamp) != 17 or not stamp.isascii() or not stamp.isdigit():
+                            raise ValueError("Invalid photo upload time.")
+                        uploaded = datetime.strptime(stamp, "%Y%m%d%H%M%S%f")
+                        if not 1980 <= uploaded.year <= 2099:
+                            raise ValueError("Invalid photo upload year.")
+                    except ValueError as error:
+                        self.reply(400, str(error))
+                        return
+                prefix = f"photo_{stamp}_" if stamp else "photo_"
                 index = 1
-                while (output / f"photo_{index:03}.jpg").exists():
+                while (output / f"{prefix}{index:03}.jpg").exists():
                     index += 1
-                path = output / f"photo_{index:03}.jpg"
+                path = output / f"{prefix}{index:03}.jpg"
                 path.write_bytes(jpeg)
+                if uploaded:
+                    os.utime(path, (uploaded.timestamp(), uploaded.timestamp()))
                 print(f"JPEG verified: {dimensions}, {len(jpeg)} bytes -> {path}", flush=True)
                 self.reply(201, json.dumps({"path": device["directory"] + "/" + path.name}), "application/json")
             else:

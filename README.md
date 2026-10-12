@@ -1,7 +1,7 @@
 FramEInk is a e-paper display controlled by an ESP32.
 Every hour it changes the content between 2 frames:
 1. Weather + Calendar events + Moon Phase
-2. Random image loaded from the sd card
+2. Image loaded from the SD card (random by default, or alphabetical)
 
 Weather data is provided by OpenWeather service.
 Calendar events are retrieved from a personal Google Calendar.
@@ -22,8 +22,18 @@ FramEInk supports 6 inch color and 10 inch grayscale frames.
    Controlla ciascuna anteprima, scegli foto intera o ritaglio a pieno schermo,
    eventualmente ruotala, poi premi **Upload photo**. Il portale passa alla
    successiva dopo il salvataggio. **Skip photo** non la trasferisce.
+   Il cursore **Zoom** va dal **50% al 400%** rispetto a **Fit**; i cursori
+   **Horizontal position / Vertical position** spostano l'immagine anche in
+   modalità foto intera. Nuova foto: zoom 100%, posizione centrata. Il JPEG
+   trasferito corrisponde al riquadro di anteprima e mantiene la risoluzione
+   del dispositivo, anche con zoom e rotazione.
 5. Nella sezione **Photos on your frame** scorri all'interno del riquadro:
    l'elenco si estende automaticamente in blocchi di dieci nomi, senza pagine.
+   **Sort photos by** sceglie **Last modified** o **Alphabetical**;
+   **Order** inverte il verso (**Descending / Ascending**). Default: ultima
+   modifica decrescente, quindi gli ultimi caricamenti per primi. L'ordinamento
+   riguarda l'intera SD, non solo i nomi già elencati; cambiarlo torna in cima
+   senza perdere la selezione. È indipendente dall'ordine di riproduzione sul display.
    Le immagini vengono scaricate dalla SD una alla volta, solo quando la loro
    anteprima entra nell'area visibile (anche rispetto alla pagina del browser).
    Se scorri via durante un download, questo viene interrotto e può riprendere
@@ -57,6 +67,31 @@ vengono modificati.
 Le dimensioni sono comunicate dal dispositivo usando la risoluzione effettiva
 del display dopo la rotazione: non vanno selezionate manualmente sul telefono.
 Il display applica il proprio dithering quando legge il JPEG.
+
+## Ordine di visualizzazione delle foto
+
+Nei Settings web, **Photo playback → Photo order** seleziona **Random** (default)
+oppure **Alphabetical**, poi premi **Save settings**. La scelta persiste dopo
+lo spegnimento e vale per entrambi i modelli; non cambia l'ordine della galleria web.
+Gli altri Settings già salvati sono mantenuti; sulle versioni precedenti si usa Random.
+
+Alphabetical segue i nomi completi dei file, senza distinguere maiuscole/minuscole
+(a parità si usa l'ordine dei byte), e riparte dalla prima foto dopo l'ultima.
+La posizione è conservata tra i deep sleep, separatamente per `/portrait` e
+`/landscape`; una nuova accensione riparte dalla prima foto. Aggiunte e cancellazioni
+non invalidano un indice: si cerca il nome successivo all'ultimo mostrato.
+Random sceglie una foto a ogni aggiornamento dedicato alle immagini; può ripetersi.
+La selezione scorre solo i nomi, con memoria costante: non carica tutte le foto.
+Le immagini illeggibili vengono saltate, con un numero limitato di tentativi.
+I nomi assegnati agli upload dal telefono sono generati dal dispositivo: Alphabetical
+ordina questi nomi, non il nome originale sul telefono o la data di scatto.
+
+Test del selettore SD reale con file e display simulati, senza modificare una SD:
+
+```sh
+clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -Itests/photo_order/mocks -IFramEink.Core/src tests/photo_order/photo_order_test.cpp FramEink.Core/src/SDPhoto.cpp -o /tmp/frameink-photo-order-test
+/tmp/frameink-photo-order-test
+```
 
 ## Caratteri del calendario e batteria
 
@@ -106,6 +141,15 @@ upload viene mantenuto aperto. Non spegnere la cornice durante la scrittura.
 Le foto ricevono nomi univoci generati dal dispositivo e non sovrascrivono quelle
 esistenti. Gli upload incompleti vengono scartati; eventuali `.part` rimasti dopo
 un'interruzione di alimentazione non vengono mostrati come foto.
+I nuovi upload registrano la data locale del telefono nella SD, anche prima
+della prima sincronizzazione NTP. FAT conserva la modifica con precisione di
+due secondi e senza fuso: il nome include anche i millisecondi per distinguere
+caricamenti ravvicinati. Le foto precedenti mantengono la data già sulla SD;
+quelle senza una data valida appaiono in fondo con il default. Il portale mostra
+la data disponibile su ciascuna scheda. Non viene usata la data di scatto EXIF.
+I blocchi ordinati usano un cursore e conservano al massimo dieci metadati nella
+RAM della board: una scansione dei nomi per blocco, nessun caricamento anticipato
+delle immagini fuori schermo.
 Limiti: 40 MiB per originale sul telefono e 2 MiB per JPEG trasferito.
 Le HEIC molto grandi possono richiedere tempo e memoria sullo smartphone.
 
@@ -237,7 +281,9 @@ clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -Itests/ph
 Test della galleria JavaScript (richiede Node.js, nessuna dipendenza esterna):
 `node tests/portal_selection_test.cjs`. Usa solo DOM e foto simulati in memoria;
 verifica caricamento solo visibile, scorrimento progressivo, cache, annullamento
-dei download fuori schermo, ripresa, Select all, conferma e gestione degli errori.
+dei download fuori schermo, ripresa, Select all, conferma e gestione degli errori,
+ordinamento nome/data nei due versi, zoom/traslazioni/rotazione e JPEG per entrambi
+i modelli.
 
 Per provare la pagina nel browser con un dispositivo simulato:
 

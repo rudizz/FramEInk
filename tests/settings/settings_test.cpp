@@ -7,7 +7,7 @@ void fields(WebServer &server)
 {
     server.arguments = {{"ssid", "Test network"}, {"password", "secret-password"},
         {"latitude", "48.1"}, {"longitude", "11.5"}, {"calendarUrl", "https://example.test/calendar.ics"},
-        {"nightPauseStart", "22:30"}, {"nightPauseEnd", "06:15"}, {"updateMinute", "45"}};
+        {"nightPauseStart", "22:30"}, {"nightPauseEnd", "06:15"}, {"updateMinute", "45"}, {"photoOrder", "alphabetical"}};
 }
 int seedLegacy()
 {
@@ -36,12 +36,22 @@ int main()
     assert(upgraded.nightPause.startMinute == 1320 && upgraded.nightPause.endMinute == 360);
     assert(upgraded.updateMinute == 0 && EEPROM.flash == previousFlash);
     assert(std::string(upgraded.SSID_User.c_str()) == "Legacy WiFi");
+    assert(upgraded.photoOrder == frameink::PhotoOrder::Random);
+
+    // The previous minute-setting firmware has no photo-order block yet.
+    assert(frameink::writeUpdateMinute(EEPROM, tail + frameink::nightPauseStorageBytes, EEPROM_SIZE, 37));
+    assert(EEPROM.commit());
+    const auto minuteFlash = EEPROM.flash;
+    WiFiAPSettingsClass upgradedMinute;
+    assert(upgradedMinute.updateMinute == 37 && upgradedMinute.nightPause.startMinute == 1320);
+    assert(upgradedMinute.photoOrder == frameink::PhotoOrder::Random && EEPROM.flash == minuteFlash);
 
     seedLegacy();
     WiFiAPSettingsClass portal;
     assert(std::string(portal.SSID_User.c_str()) == "Legacy WiFi");
     assert(portal.nightPause.startMinute == 1380 && portal.nightPause.endMinute == 300);
     assert(portal.updateMinute == 0);
+    assert(portal.photoOrder == frameink::PhotoOrder::Random);
     const auto old = EEPROM.flash;
     portal.initAP();
     WebServer &server = *WebServer::lastCreated;
@@ -49,23 +59,35 @@ int main()
     assert(std::string(server.body.c_str()).find("\"nightPauseStart\":\"23:00\"") != std::string::npos);
     assert(std::string(server.body.c_str()).find("\"nightPauseEnd\":\"05:00\"") != std::string::npos);
     assert(std::string(server.body.c_str()).find("\"updateMinute\":\"00\"") != std::string::npos);
+    assert(std::string(server.body.c_str()).find("\"photoOrder\":\"random\"") != std::string::npos);
     fields(server);
     server.call("/api/settings", HTTP_POST);
     assert(server.status == 200 && EEPROM.flash != old);
     assert(portal.nightPause.startMinute == 1350 && portal.nightPause.endMinute == 375);
     assert(portal.updateMinute == 45);
+    assert(portal.photoOrder == frameink::PhotoOrder::Alphabetical);
 
     WiFiAPSettingsClass rebooted;
     assert(std::string(rebooted.SSID_User.c_str()) == "Test network");
     assert(std::string(rebooted.PWD_User.c_str()) == "secret-password");
     assert(rebooted.nightPause.startMinute == 1350 && rebooted.nightPause.endMinute == 375);
     assert(rebooted.updateMinute == 45);
+    assert(rebooted.photoOrder == frameink::PhotoOrder::Alphabetical);
     rebooted.initAP();
     WebServer &second = *WebServer::lastCreated;
     second.call("/api/settings");
     assert(std::string(second.body.c_str()).find("\"nightPauseEnd\":\"06:15\"") != std::string::npos);
     assert(std::string(second.body.c_str()).find("\"updateMinute\":\"45\"") != std::string::npos);
+    assert(std::string(second.body.c_str()).find("\"photoOrder\":\"alphabetical\"") != std::string::npos);
     const auto saved = EEPROM.flash;
+    for (const char *bad : {"", "Random", "ALPHABETICAL", "0", "1", "date", " random", "random "})
+    {
+        fields(second);
+        second.arguments["photoOrder"] = bad;
+        second.call("/api/settings", HTTP_POST);
+        assert(second.status == 400 && EEPROM.flash == saved);
+        assert(rebooted.photoOrder == frameink::PhotoOrder::Alphabetical);
+    }
     for (const char *bad : {"", "60", "99", "100", "-1", "1.5", "1e1", " 5", "5 ", "+1", "00:00"})
     {
         fields(second);
@@ -95,11 +117,13 @@ int main()
     fields(second);
     second.arguments["nightPauseStart"] = "21:00";
     second.arguments["updateMinute"] = "59";
+    second.arguments["photoOrder"] = "random";
     EEPROM.failCommit = true;
     second.call("/api/settings", HTTP_POST);
     assert(second.status == 500 && EEPROM.flash == saved);
     assert(rebooted.nightPause.startMinute == 1350);
     assert(rebooted.updateMinute == 45);
+    assert(rebooted.photoOrder == frameink::PhotoOrder::Alphabetical);
     EEPROM.failCommit = false;
 
     // Legacy clients without scheduling keys preserve the saved pause/minute.
@@ -107,9 +131,11 @@ int main()
     second.arguments.erase("nightPauseStart");
     second.arguments.erase("nightPauseEnd");
     second.arguments.erase("updateMinute");
+    second.arguments.erase("photoOrder");
     second.call("/api/settings", HTTP_POST);
     assert(second.status == 200 && rebooted.nightPause.startMinute == 1350);
     assert(rebooted.updateMinute == 45);
+    assert(rebooted.photoOrder == frameink::PhotoOrder::Alphabetical);
     fields(second);
     second.arguments["nightPauseStart"] = second.arguments["nightPauseEnd"] = "00:00";
     second.call("/api/settings", HTTP_POST);
@@ -117,6 +143,14 @@ int main()
     WiFiAPSettingsClass disabled;
     assert(disabled.nightPause.startMinute == 0 && disabled.nightPause.endMinute == 0);
     assert(disabled.updateMinute == 45);
+    assert(disabled.photoOrder == frameink::PhotoOrder::Alphabetical);
+
+    fields(second);
+    second.arguments["photoOrder"] = "random";
+    second.call("/api/settings", HTTP_POST);
+    assert(second.status == 200 && rebooted.photoOrder == frameink::PhotoOrder::Random);
+    WiFiAPSettingsClass randomReloaded;
+    assert(randomReloaded.photoOrder == frameink::PhotoOrder::Random && randomReloaded.updateMinute == 45);
 
     // Every supported minute survives save/reboot, with and without zero padding.
     for (unsigned minute = 0; minute < 60; ++minute)
@@ -131,5 +165,5 @@ int main()
             WiFiAPSettingsClass reloaded;
             assert(reloaded.updateMinute == minute && reloaded.nightPause.startMinute == 1350);
         }
-    std::cout << "Settings API: legacy migration, minute/pause validation, save/reload and commit failure passed\n";
+    std::cout << "Settings API: legacy migration, photo order/minute/pause validation, save/reload and commit failure passed\n";
 }

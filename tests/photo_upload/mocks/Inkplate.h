@@ -7,6 +7,9 @@
 #include <algorithm>
 
 constexpr int O_RDONLY = 0, O_RDWR = 1, O_CREAT = 2, O_EXCL = 4;
+constexpr uint8_t T_CREATE = 2, T_WRITE = 4;
+constexpr uint16_t FS_DATE(unsigned year, unsigned month, unsigned day) { return ((year - 1980) << 9) | (month << 5) | day; }
+constexpr uint16_t FS_TIME(unsigned hour, unsigned minute, unsigned second) { return (hour << 11) | (minute << 5) | (second / 2); }
 
 // In-memory SdFat double, including injected SD failures. No real files touched.
 class SdFat {
@@ -14,13 +17,20 @@ class SdFat {
     inline static SdFat *active = nullptr;
     std::map<std::string, std::vector<uint8_t>> files;
     std::set<std::string> directories;
+    std::map<std::string, std::pair<uint16_t, uint16_t>> modified;
     bool failMkdir = false, failOpen = false, failWrite = false;
     bool failSync = false, failRename = false, failRemove = false;
+    bool failTimestamp = false;
+    unsigned directoryScans = 0;
     std::set<std::string> hidden;
     SdFat() { active = this; }
     bool exists(const char *path) { return files.count(path) || directories.count(path); }
     bool mkdir(const char *path) { return !failMkdir && directories.insert(path).second; }
-    bool remove(const char *path) { return !failRemove && files.erase(path) > 0; }
+    bool remove(const char *path) {
+        if (failRemove || !files.erase(path)) return false;
+        modified.erase(path);
+        return true;
+    }
 };
 
 class SdFile {
@@ -41,6 +51,7 @@ class SdFile {
         position_ = 0;
         entry_ = 0;
         writable_ = flags & O_RDWR;
+        if (storage_->directories.count(path)) ++storage_->directoryScans;
         return true;
     }
     bool openNext(SdFile *directory, int flags = O_RDONLY) {
@@ -59,6 +70,18 @@ class SdFile {
     bool isFile() const { return isOpen() && storage_->files.count(path_); }
     bool isHidden() const { return storage_->hidden.count(path_); }
     size_t fileSize() const { return storage_->files.at(path_).size(); }
+    bool getModifyDateTime(uint16_t *date, uint16_t *clock) const {
+        const auto found = storage_->modified.find(path_);
+        if (found == storage_->modified.end()) return false;
+        *date = found->second.first;
+        *clock = found->second.second;
+        return true;
+    }
+    bool timestamp(uint8_t flags, uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute, uint8_t second) {
+        if (storage_->failTimestamp || !writable_ || !(flags & T_WRITE)) return false;
+        storage_->modified[path_] = {FS_DATE(year, month, day), FS_TIME(hour, minute, second)};
+        return true;
+    }
     size_t getName(char *name, size_t size) const {
         const auto basename = path_.substr(path_.find_last_of('/') + 1);
         if (basename.size() >= size) { name[0] = 0; return 0; }
@@ -98,6 +121,10 @@ class SdFile {
         if (storage_->failRename || storage_->exists(path)) return false;
         storage_->files[path] = std::move(storage_->files.at(path_));
         storage_->files.erase(path_);
+        if (storage_->modified.count(path_)) {
+            storage_->modified[path] = storage_->modified.at(path_);
+            storage_->modified.erase(path_);
+        }
         path_ = path;
         return true;
     }
