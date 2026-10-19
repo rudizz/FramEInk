@@ -25,7 +25,7 @@ struct DeviceConfiguration
 
     bool hasWiFiCredentials() const
     {
-        return wifiSsid.length() > 0 && wifiPassword.length() > 0;
+        return wifiSsid.length() > 0;
     }
 
     bool hasCalendarUrl() const

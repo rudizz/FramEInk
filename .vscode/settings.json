@@ -1,5 +1,5 @@
 {
     "arduino.useArduinoCli": true,
-    "arduino.path": "/Applications/Arduino IDE.app/Contents/Resources/app/lib/backend/resources",
+    "arduino.path": "/Users/rudipirani/VSCode/FramEInk/.vscode/arduino-cli-wrapper/bin",
     "arduino.commandPath": "arduino-cli"
 }

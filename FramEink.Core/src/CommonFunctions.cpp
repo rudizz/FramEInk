@@ -4,6 +4,9 @@
 #include <cctype>
 #include <cstdint>
 #include <cstdlib>
+#include <memory>
+#include <new>
+#include <climits>
 
 #pragma region Variables
 
@@ -605,6 +608,10 @@ bool parseICalDateTime(const ICalProperty& property, time_t& epoch)
         }
     }
 
+    // ESP32 core time_t is signed 32-bit. Reject impossible/unrepresentable
+    // dates rather than normalizing malformed network input into another date.
+    if (year < 1970 || year > 2037 || month < 1 || month > 12 || day < 1 || day > 31 ||
+        hour > 23 || minute > 59 || second > 59) return false;
     tm tmValue = {};
     tmValue.tm_year = year - 1900;
     tmValue.tm_mon = month - 1;
@@ -614,7 +621,7 @@ bool parseICalDateTime(const ICalProperty& property, time_t& epoch)
     tmValue.tm_sec = property.isDateOnly ? 0 : second;
 
     epoch = mktime(&tmValue);
-    return true;
+    return epoch >= 0 && tmValue.tm_mon == month - 1 && tmValue.tm_mday == day;
 }
 
 long parseDurationSeconds(const char* durationValue)
@@ -634,7 +641,7 @@ long parseDurationSeconds(const char* durationValue)
 
     ++cursor;
     bool inTimeSection = false;
-    long durationSeconds = 0;
+    int64_t durationSeconds = 0;
 
     while (*cursor != 0)
     {
@@ -650,6 +657,7 @@ long parseDurationSeconds(const char* durationValue)
         if (endCursor == cursor || endCursor == nullptr || *endCursor == 0)
             break;
 
+        if (value < 0 || value > 366 * 86400L) return 0;
         switch (*endCursor)
         {
         case 'W':
@@ -674,6 +682,7 @@ long parseDurationSeconds(const char* durationValue)
             break;
         }
 
+        if (durationSeconds > 366 * DAYS_2_SEC) return 0;
         cursor = endCursor + 1;
     }
 
@@ -757,7 +766,8 @@ bool parseCsvIntegers(const char* source, int* destination, size_t destinationCa
     char* token = strtok_r(buffer, ",", &savePtr);
     while (token != nullptr && count < destinationCapacity)
     {
-        destination[count++] = atoi(token);
+        const long value = strtol(token, nullptr, 10);
+        destination[count++] = value >= INT_MIN && value <= INT_MAX ? static_cast<int>(value) : 0;
         token = strtok_r(nullptr, ",", &savePtr);
     }
 
@@ -794,12 +804,13 @@ void parseRecurrenceRule(const char* ruleValue, int timeZoneSeconds, RecurrenceR
             }
             else if (strcmp(key, "INTERVAL") == 0)
             {
-                long interval = atol(value);
-                rule.interval = interval > 0 ? (size_t)interval : 1;
+                long interval = strtol(value, nullptr, 10);
+                rule.interval = interval > 0 && interval <= 10000 ? (size_t)interval : 1;
             }
             else if (strcmp(key, "COUNT") == 0)
             {
-                rule.count = atoi(value);
+                const long count = strtol(value, nullptr, 10);
+                rule.count = count > 0 && count <= 1000000 ? static_cast<int>(count) : 0;
             }
             else if (strcmp(key, "UNTIL") == 0)
             {
@@ -963,8 +974,12 @@ time_t fastForwardOccurrence(time_t occurrenceStart, time_t visibleStartWindow, 
     time_t intervalsToSkip = (visibleStartWindow - occurrenceStart) / stepSeconds;
     occurrenceStart += intervalsToSkip * stepSeconds;
 
-    while (occurrenceStart < visibleStartWindow)
-        occurrenceStart += stepSeconds;
+    if (occurrenceStart < visibleStartWindow)
+    {
+        const int64_t next = int64_t(occurrenceStart) + stepSeconds;
+        if (next >= 2147483647) return 2147483647;
+        occurrenceStart = static_cast<time_t>(next);
+    }
 
     return occurrenceStart;
 }
@@ -1021,6 +1036,8 @@ void addOccurrenceEntries(EventClass entries[],
     time_t dayCursor = resetEpochOf(epochFrom, false, false, false, true, true, true);
     time_t endDay = resetEpochOf(epochTo, false, false, false, true, true, true);
 
+    if (dayCursor < epochFirstDayShown) dayCursor = epochFirstDayShown;
+    if (endDay > epochLastDayShown) endDay = epochLastDayShown;
     while (dayCursor <= endDay && entriesNum < EventClass::MAX_CALENDAR_EVENTS)
     {
         time_t dayEnd = dayCursor + DAYS_2_SEC - 1;
@@ -1082,11 +1099,31 @@ time_t resetEpochOf(time_t epochToReset, bool year, bool month, bool monthDay, b
 
 int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int timeZone, time_t epochFirstDayShown, time_t epochLastDayShown)
 {
+    if (!entries || !beginEvt || !endCal || beginEvt >= endCal ||
+        epochLastDayShown < epochFirstDayShown) return 0;
+    // Keep the parser's large scratch buffers off the 8 KiB Arduino loop stack.
+    struct Scratch {
+        char propertyLine[MAX_ICAL_PROPERTY_LENGTH];
+        ICalProperty startProperty, endProperty, durationProperty, summaryProperty, locationProperty, recurrenceProperty;
+        char summary[MAX_ICAL_TEXT_LENGTH];
+        char location[sizeof(EventClass::location)];
+        RecurrenceRule recurrence;
+        ExDateList exDates;
+    };
+    std::unique_ptr<Scratch> scratch(new (std::nothrow) Scratch);
+    if (!scratch) return -1;
+    auto &propertyLine = scratch->propertyLine;
     int entriesNum = 0;
-    char propertyLine[MAX_ICAL_PROPERTY_LENGTH];
+    const uint32_t started = millis();
+    unsigned steps = 0;
+    const auto withinBudget = [&]() {
+        if (++steps % 32 == 0) delay(1);
+        return steps <= 100000 && static_cast<uint32_t>(millis()) - started < 10000;
+    };
 
     while (entriesNum < EventClass::MAX_CALENDAR_EVENTS && beginEvt < endCal)
     {
+        if (!withinBudget()) return -1;
         char* eventMarker = strstr(beginEvt, "BEGIN:VEVENT");
         if (eventMarker == nullptr || eventMarker >= endCal)
             break;
@@ -1096,12 +1133,18 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
         if (endEvt == nullptr || endEvt > endCal)
             break;
 
-        ICalProperty startProperty;
-        ICalProperty endProperty;
-        ICalProperty durationProperty;
-        ICalProperty summaryProperty;
-        ICalProperty locationProperty;
-        ICalProperty recurrenceProperty;
+        auto &startProperty = scratch->startProperty;
+        startProperty = {};
+        auto &endProperty = scratch->endProperty;
+        endProperty = {};
+        auto &durationProperty = scratch->durationProperty;
+        durationProperty = {};
+        auto &summaryProperty = scratch->summaryProperty;
+        summaryProperty = {};
+        auto &locationProperty = scratch->locationProperty;
+        locationProperty = {};
+        auto &recurrenceProperty = scratch->recurrenceProperty;
+        recurrenceProperty = {};
 
         if (readPropertyLine(eventStart, endEvt, "DTSTART", propertyLine, sizeof(propertyLine), nullptr))
             parseProperty(propertyLine, "DTSTART", startProperty);
@@ -1122,8 +1165,9 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
         if (readPropertyLine(eventStart, endEvt, "RRULE", propertyLine, sizeof(propertyLine), nullptr))
             parseProperty(propertyLine, "RRULE", recurrenceProperty);
 
-        char summary[MAX_ICAL_TEXT_LENGTH] = "";
-        char location[sizeof(entries[0].location)] = "";
+        auto &summary = scratch->summary;
+        auto &location = scratch->location;
+        summary[0] = location[0] = 0;
         decodeIcalText(summaryProperty.found ? summaryProperty.value : "(No title)", summary, sizeof(summary));
         decodeIcalText(locationProperty.found ? locationProperty.value : "", location, sizeof(location));
 
@@ -1156,7 +1200,13 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
         else if (durationProperty.found)
         {
             long durationSeconds = parseDurationSeconds(durationProperty.value);
-            baseEnd = baseStart + durationSeconds;
+            const int64_t endEpoch = int64_t(baseStart) + durationSeconds;
+            if (endEpoch < 0 || endEpoch >= 2147483647)
+            {
+                beginEvt = endEvt + 10;
+                continue;
+            }
+            baseEnd = static_cast<time_t>(endEpoch);
             if (allDay && durationSeconds > 0)
                 baseEnd -= 1;
         }
@@ -1182,10 +1232,11 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
         }
 
         time_t duration = baseEnd - baseStart;
-        RecurrenceRule recurrence;
+        auto &recurrence = scratch->recurrence;
         parseRecurrenceRule(recurrenceProperty.found ? recurrenceProperty.value : "", timeZone, recurrence);
 
-        ExDateList exDates;
+        auto &exDates = scratch->exDates;
+        exDates = {};
         const time_t exDateVisibleStartWindow = epochFirstDayShown - duration;
         collectExDates(eventStart, endEvt, exDates, exDateVisibleStartWindow, epochLastDayShown, timeZone);
 
@@ -1209,14 +1260,17 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
             if (recurrence.count == 0)
             {
                 time_t visibleStartWindow = epochFirstDayShown - duration;
-                time_t recurrenceStep = (time_t)recurrence.interval * 7 * DAYS_2_SEC;
+                int64_t recurrenceStep = int64_t(recurrence.interval) * 7 * DAYS_2_SEC;
                 if (recurrenceStep > 0 && visibleStartWindow > baseWeekStart)
                     firstWeekIndex = (size_t)((visibleStartWindow - baseWeekStart) / recurrenceStep);
             }
 
             for (size_t weekIndex = firstWeekIndex; entriesNum < EventClass::MAX_CALENDAR_EVENTS; ++weekIndex)
             {
-                time_t weekStart = baseWeekStart + (time_t)(weekIndex * recurrence.interval * 7) * DAYS_2_SEC;
+                if (!withinBudget()) return -1;
+                const int64_t weekEpoch = int64_t(baseWeekStart) + int64_t(weekIndex) * recurrence.interval * 7 * DAYS_2_SEC;
+                if (weekEpoch > int64_t(epochLastDayShown) + 7 * DAYS_2_SEC || weekEpoch >= 2147483647) break;
+                time_t weekStart = static_cast<time_t>(weekEpoch);
                 bool finished = false;
 
                 for (int weekDay = 0; weekDay < 7 && entriesNum < EventClass::MAX_CALENDAR_EVENTS; ++weekDay)
@@ -1240,7 +1294,9 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
                         break;
                     }
 
-                    time_t occurrenceEnd = occurrenceStart + duration;
+                    // Only the visible part is rendered; avoid overflow for long recurring events.
+                    const int64_t endEpoch = int64_t(occurrenceStart) + duration;
+                    time_t occurrenceEnd = static_cast<time_t>(endEpoch > epochLastDayShown ? epochLastDayShown : endEpoch);
                     if (occurrenceStart > epochLastDayShown)
                     {
                         finished = true;
@@ -1257,7 +1313,7 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
                 if (finished)
                     break;
 
-                time_t nextWeekStart = weekStart + (time_t)(recurrence.interval * 7) * DAYS_2_SEC + timeOfDay;
+                int64_t nextWeekStart = int64_t(weekStart) + int64_t(recurrence.interval) * 7 * DAYS_2_SEC + timeOfDay;
                 if (nextWeekStart > epochLastDayShown && (!recurrence.hasUntil || nextWeekStart > recurrence.until))
                     break;
             }
@@ -1268,13 +1324,15 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
             if (recurrence.count == 0 &&
                 (recurrence.frequency == RecurrenceFrequency::Daily || recurrence.frequency == RecurrenceFrequency::Weekly))
             {
-                time_t recurrenceStep = (recurrence.frequency == RecurrenceFrequency::Daily ? 1 : 7) *
-                    (time_t)recurrence.interval * DAYS_2_SEC;
-                occurrenceStart = fastForwardOccurrence(occurrenceStart, epochFirstDayShown - duration, recurrenceStep);
+                int64_t recurrenceStep = (recurrence.frequency == RecurrenceFrequency::Daily ? 1 : 7) *
+                    int64_t(recurrence.interval) * DAYS_2_SEC;
+                if (recurrenceStep < 2147483647)
+                    occurrenceStart = fastForwardOccurrence(occurrenceStart, epochFirstDayShown - duration, static_cast<time_t>(recurrenceStep));
             }
 
             while (entriesNum < EventClass::MAX_CALENDAR_EVENTS)
             {
+                if (!withinBudget()) return -1;
                 if (recurrence.hasUntil && occurrenceStart > recurrence.until)
                     break;
                 if (occurrenceStart > epochLastDayShown)
@@ -1303,7 +1361,9 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
                     if (recurrence.count > 0 && generatedOccurrences > recurrence.count)
                         break;
 
-                    time_t occurrenceEnd = occurrenceStart + duration;
+                    // Only the visible part is rendered; avoid overflow for long recurring events.
+                    const int64_t endEpoch = int64_t(occurrenceStart) + duration;
+                    time_t occurrenceEnd = static_cast<time_t>(endEpoch > epochLastDayShown ? epochLastDayShown : endEpoch);
                     if (!isExcludedOccurrence(exDates, occurrenceStart, allDay) &&
                         overlapsVisibleRange(occurrenceStart, occurrenceEnd, epochFirstDayShown, epochLastDayShown))
                     {
@@ -1334,11 +1394,15 @@ int parseCalendarEvents(EventClass entries[], char* beginEvt, char* endCal, int 
 time_t aggiungiEpochRipetizione(time_t epoch, uint16_t giorniFrequenzaRipetizione, size_t intervalloRipetizione)
 {
     time_t epochOut = epoch;
+    if (intervalloRipetizione > 10000) return epoch;
     switch (giorniFrequenzaRipetizione)
     {
     case 1:
     case 7:
-        epochOut = epoch + (time_t)giorniFrequenzaRipetizione * (time_t)intervalloRipetizione * DAYS_2_SEC;
+        {
+            const int64_t next = int64_t(epoch) + int64_t(giorniFrequenzaRipetizione) * intervalloRipetizione * DAYS_2_SEC;
+            epochOut = next < 2147483647 ? static_cast<time_t>(next) : epoch;
+        }
         break;
     case 30:
     {

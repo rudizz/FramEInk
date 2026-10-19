@@ -1,4 +1,5 @@
 #include "InkplateClock.h"
+#include "../Diagnostics/DiagnosticLog.h"
 #include <Inkplate.h>
 #include <esp_sleep.h>
 #include <sys/time.h>
@@ -49,8 +50,13 @@ bool updateRtcTime(RTC &rtc)
     if (!validEpoch(now))
         return false;
     rtc.setEpoch(static_cast<uint32_t>(now));
-    const int64_t difference = int64_t(rtc.getEpoch()) - now;
-    const bool updated = rtc.isSet() && difference >= -2 && difference <= 2;
+    const int64_t readback = rtc.getEpoch();
+    const int64_t difference = readback - now;
+    const bool isSet = rtc.isSet();
+    const bool updated = isSet && difference >= -2 && difference <= 2;
+    diagnosticLog("RTC sync confirmed=%d set=%d expected=%lld read=%lld delta=%lld",
+        int(updated), int(isSet), static_cast<long long>(now),
+        static_cast<long long>(readback), static_cast<long long>(difference));
     Serial.printf(updated ? "[Clock] External RTC synchronized from NTP.\n"
                           : "[Clock] External RTC did not confirm the new time.\n");
     return updated;
@@ -96,9 +102,12 @@ bool enterScheduledSleep(RTC &rtc, int64_t targetEpoch)
     const uint64_t seconds = static_cast<uint64_t>(remaining) + (alarmReady ? 300 : 0);
     if (esp_sleep_enable_timer_wakeup(seconds * microsecondsPerSecond) != ESP_OK)
         return false;
+    diagnosticLog("Sleep target=%lld remaining=%lld RTC_alarm=%d", static_cast<long long>(targetEpoch),
+        static_cast<long long>(remaining), alarmReady);
     Serial.printf("[Clock] Next wake UTC epoch=%lld, in %lld seconds (%s).\n",
                   static_cast<long long>(targetEpoch), static_cast<long long>(remaining),
                   alarmReady ? "RTC alarm; backup timer enabled" : "RTC unavailable; fallback timer");
+    diagnosticSleep();
     esp_deep_sleep_start();
     return true; // Reached only by a test double; deep sleep does not return.
 }
@@ -122,9 +131,11 @@ void sleepUntilNextRefresh(RTC &rtc, RefreshScheduleState &schedule,
             schedule.lastTargetEpoch = previousTarget;
         }
     }
+    diagnosticLog("No usable clock/alarm; sleeping for one hour");
     Serial.printf("[Clock] No usable clock/alarm; retrying in one hour without changing the saved minute.\n");
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
     esp_sleep_enable_timer_wakeup(3600ull * microsecondsPerSecond);
+    diagnosticSleep();
     esp_deep_sleep_start();
 }
 } // namespace frameink

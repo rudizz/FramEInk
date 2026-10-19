@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+"""Workspace Arduino CLI entry point with a physical-device upload guard."""
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tools"))
+from board_guard import cli_main
+
+sys.exit(cli_main())

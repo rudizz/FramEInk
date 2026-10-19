@@ -12,6 +12,9 @@
   Contains `CalendarAgenda` and `CalendarService`.
 - `src/App`
   Contains the shared `ApplicationController` and renderer-facing runtime contracts.
+- `src/Diagnostics`
+  Contains bounded SD logs, reset reasons, RTC breadcrumbs and repeated-reset recovery.
+  Called only from the main task; Wi-Fi callbacks queue numeric reasons atomically.
 - `src`
   Contains platform services such as `Network`, `SDPhoto`, and shared calendar parsing helpers.
 
@@ -33,8 +36,12 @@
 1. The sketch boots and restores `frameink::ApplicationRuntime` from RTC memory.
 2. `ApplicationController` ensures settings are available through `IDeviceConfigurationProvider`.
 3. The controller loads `WeatherForecast` and `CalendarAgenda` using shared core services.
+   Requests and parsing have resource budgets; unavailable network data does not restart the device.
 4. The display-specific renderer draws either the dashboard or the photo view.
-5. The sketch computes deep-sleep timing and powers down.
+5. The sketch computes deep-sleep timing, records the completed cycle and powers down.
+6. Fault resets resume only a valid RTC session whose Settings completed with Wi-Fi credentials;
+   a watchdog before application startup opens Settings. Three consecutive failures open a recovery portal,
+   then sleep before retrying. Log downloads are available from that portal or a normal power-on.
 
 ## Suggested next improvements
 

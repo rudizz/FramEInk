@@ -2,12 +2,21 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
+#include <atomic>
+#include "../Diagnostics/DiagnosticLog.h"
 
 namespace frameink {
 namespace {
 
 constexpr uint32_t attemptTimeoutMs = 30000;
 constexpr uint32_t pollIntervalMs = 100;
+std::atomic<unsigned> lastDisconnectReason{0};
+
+void persistDisconnect()
+{
+    const unsigned reason = lastDisconnectReason.exchange(0);
+    if (reason) diagnosticLog("WiFi disconnect reason=%u", reason);
+}
 
 const char *disconnectReason(uint8_t reason)
 {
@@ -51,10 +60,11 @@ const char *disconnectReason(uint8_t reason)
 }
 
 // Called on the ESP32 event task. Serial.printf is thread-safe; there is no
-// shared mutable application state and no Wi-Fi API call inside this callback.
+// SD access or Wi-Fi API call inside this callback. Only an atomic reason is queued.
 void logDisconnect(arduino_event_t *event)
 {
     const uint8_t reason = event->event_info.wifi_sta_disconnected.reason;
+    lastDisconnectReason.store(reason);
     Serial.printf("[WiFi] Disconnected: reason=%u (%s).\n",
                   static_cast<unsigned>(reason), disconnectReason(reason));
 }
@@ -76,6 +86,7 @@ void registerDiagnostics()
 bool ensureWiFiConnected(const char *ssid, const char *password, uint32_t timeoutMs)
 {
     registerDiagnostics();
+    persistDisconnect();
     if (WiFi.status() == WL_CONNECTED)
         return true;
 
@@ -101,6 +112,7 @@ bool ensureWiFiConnected(const char *ssid, const char *password, uint32_t timeou
 
     for (;;)
     {
+        persistDisconnect();
         if (WiFi.status() == WL_CONNECTED)
         {
             Serial.printf("[WiFi] Connected after %lu ms: IP=%s, RSSI=%ld dBm, channel=%ld.\n",

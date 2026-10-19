@@ -1,4 +1,5 @@
 #include "PhotoUploadService.h"
+#include "../Diagnostics/DiagnosticLog.h"
 #include <cassert>
 #include <iostream>
 #include <fstream>
@@ -259,6 +260,28 @@ void sortAndTimestampTests() {
 }
 
 int main(int argc, char **argv) {
+    // Diagnostic downloads use fixed paths, preserve files, and share portal SD/upload guards.
+    {
+        Fixture f;
+        const std::string current(5000, 'c'), previous(2050, 'p');
+        f.storage.files[currentLogPath] = {current.begin(), current.end()};
+        f.storage.files[previousLogPath] = {previous.begin(), previous.end()};
+        f.server.call("/api/logs");
+        assert(f.server.status == 200 && f.server.body == current.c_str());
+        assert(f.server.contentLength == current.size());
+        f.server.arguments["file"] = "previous";
+        f.server.call("/api/logs");
+        assert(f.server.status == 200 && f.server.body == previous.c_str());
+        f.server.arguments["file"] = "../../secret";
+        f.server.call("/api/logs");
+        assert(f.server.status == 400 && f.storage.files.size() == 2);
+        f.server.arguments["file"] = "current";
+        f.receive();
+        f.server.call("/api/logs");
+        assert(f.server.status == 409);
+    }
+    { Fixture f; f.server.call("/api/logs"); assert(f.server.status == 404); }
+    { Fixture f(false); f.server.call("/api/logs"); assert(f.server.status == 503); }
     galleryTests();
     sortAndTimestampTests();
     for (bool color : {false, true}) {

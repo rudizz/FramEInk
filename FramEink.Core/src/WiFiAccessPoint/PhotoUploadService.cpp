@@ -1,5 +1,6 @@
 #include "PhotoUploadService.h"
 #include "PortalAssets.h"
+#include "../Diagnostics/DiagnosticLog.h"
 #include <cstring>
 #include <strings.h>
 #include <array>
@@ -188,6 +189,7 @@ void PhotoUploadService::begin(WebServer &server)
         [this]() { handleUpload(); });
     server.on("/api/photos", HTTP_GET, [this]() { listPhotos(); });
     server.on("/api/photo", HTTP_GET, [this]() { servePhoto(); });
+    server.on("/api/logs", HTTP_GET, [this]() { serveLogs(); });
     server.on("/api/photos/delete", HTTP_POST, [this]() { deletePhoto(); });
 }
 
@@ -378,6 +380,45 @@ void PhotoUploadService::servePhoto()
         if (client.write(buffer, count) != static_cast<size_t>(count)) break;
         touch();
         delay(0);
+    }
+    file.close();
+    client.stop();
+}
+
+void PhotoUploadService::serveLogs()
+{
+    if (!galleryReady()) return;
+    const String selection = server_->arg("file");
+    if (selection.length() != 0 && selection != "current" && selection != "previous")
+    {
+        server_->send(400, "text/plain", "Choose current or previous log.");
+        return;
+    }
+    // Fixed allowlist: no client-controlled SD path and no log deletion endpoint.
+    const bool previous = selection == "previous";
+    SdFile file;
+    if (!file.open(previous ? previousLogPath : currentLogPath, O_RDONLY) || !file.isFile())
+    {
+        file.close();
+        server_->send(404, "text/plain", "Log not available. Previous log exists only after rotation.");
+        return;
+    }
+    server_->sendHeader("Content-Disposition", previous
+        ? "attachment; filename=frameink-previous.log" : "attachment; filename=frameink-current.log");
+    server_->sendHeader("Connection", "close");
+    server_->sendHeader("X-Content-Type-Options", "nosniff");
+    server_->setContentLength(file.fileSize());
+    server_->send(200, "text/plain; charset=utf-8", "");
+    auto client = server_->client();
+    uint8_t buffer[1024];
+    int count;
+    const uint32_t started = millis();
+    while (client.connected() && static_cast<uint32_t>(millis()) - started < 30000 &&
+           (count = file.read(buffer, sizeof(buffer))) > 0)
+    {
+        if (client.write(buffer, count) != static_cast<size_t>(count)) break;
+        touch();
+        delay(1);
     }
     file.close();
     client.stop();

@@ -159,8 +159,11 @@ Avvio, meteo e calendario condividono la stessa attesa della connessione:
 la riconnessione automatica del driver resta attiva per i fallimenti reali,
 ma l'applicazione non interrompe più scansione, autenticazione o DHCP ogni
 pochi secondi. Solo dopo **30 secondi** senza connessione completa viene
-forzato un nuovo tentativo. Il limite complessivo è **120 secondi**, poi viene
-mantenuto il riavvio di recupero già previsto dal firmware.
+forzato un nuovo tentativo. Il limite complessivo è **120 secondi**: se la connessione fallisce, il firmware
+salta le richieste online per quel ciclo, mostra il calendario con i dati
+mancanti indicati dai segnaposto meteo e va in sleep. Non riavvia la scheda.
+I tentativi riprendono al prossimo ciclo calendario (normalmente dopo due
+risvegli, perché l'alternanza con le foto prosegue).
 
 Il monitor seriale a 115200 baud mostra il tempo di connessione, IP, RSSI,
 canale e, a ogni disconnessione, codice e descrizione del motivo, ad esempio:
@@ -185,6 +188,123 @@ overflow di `millis()`, tutti i codici di errore e assenza di credenziali nei lo
 clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -Itests/wifi/mocks -IFramEink.Core/src tests/wifi/wifi_connection_test.cpp FramEink.Core/src/Connectivity/WiFiConnection.cpp -o /tmp/frameink-wifi-connection-test
 /tmp/frameink-wifi-connection-test
 ```
+
+## Riavvii imprevisti e log sulla SD
+
+I log sono **attivi automaticamente** su Inkplate 10 e Inkplate 6 Color,
+con la SD già usata per le foto. Non richiedono formattazione o configurazione.
+Vengono salvati in `/frameink-logs/current.log`; raggiunti 256 KiB, il file
+ruota in `/frameink-logs/previous.log`, sostituendo il precedente. Occupazione
+massima complessiva: circa **512 KiB**. Le foto restano nelle loro cartelle.
+Ogni messaggio è sincronizzato e il file viene chiuso subito; non si tiene
+un file di log aperto durante la decodifica delle foto.
+
+Per recuperare i log dopo un problema:
+
+1. Spegni e riaccendi la cornice per aprire i Settings, oppure usa il portale
+   già aperto dal recupero dopo reset ripetuti.
+2. Collegati alla rete **FramEInk** con la password mostrata sul display e apri
+   `http://192.168.4.1/`.
+3. Apri **Diagnostics and restart logs**, premi **Download current log** e,
+   se disponibile, **Download previous log**. Il precedente esiste solo dopo
+   la prima rotazione. La lettura non cancella i log e non li carica in RAM
+   tutti insieme. Durante un upload foto termina prima il trasferimento.
+4. Conserva entrambi i file per l'analisi. In alternativa, a cornice spenta,
+   puoi leggerli dalla SD con il computer.
+
+Il normale deep sleep spegne il Wi-Fi: il portale è accessibile nei Settings,
+non durante lo sleep. Spegnere e riaccendere **non cancella** i file di log.
+Il firmware registra già al primo riavvio anomalo la causa disponibile, quindi
+la successiva accensione manuale non nasconde quel record.
+
+Ogni riga include epoch UTC, millisecondi dall'avvio, numero di avvio della
+sessione, memoria libera/minima, blocco massimo allocabile, PSRAM libera e
+margine minimo dello stack. Prima del ripristino RTC/NTP l'epoch può non essere
+valido: per ricostruire la sequenza usare anche `boot` e `ms`.
+Le fasi includono `wifi_connect`, `weather_download`, `calendar_download`,
+`calendar_parse`, `photo_decode`, `dashboard_render`, `display_refresh` e
+`deep_sleep`. Sono inclusi esiti HTTP, byte ricevuti, numero eventi, errori di
+allocazione, disconnessioni Wi-Fi e prossimo risveglio RTC/timer.
+La riga `RTC sync` registra anche l'epoch scritto e riletto, la differenza e
+l'esito di `isSet()`, per distinguere un orologio non impostato da un'ora errata.
+Non vengono registrati SSID, password, URL privati, nomi dei calendari o titoli
+degli eventi. Il monitor seriale a **115200 baud** è disponibile su entrambi i modelli.
+
+Il record `boot` distingue `POWERON`, `DEEP_SLEEP`, `SOFTWARE`, `PANIC`,
+`TASK_WATCHDOG`, `INT_WATCHDOG`, `WATCHDOG` e `BROWNOUT` tramite
+[`esp_reset_reason()` di Espressif](https://docs.espressif.com/projects/esp-idf/en/v4.4/esp32/api-reference/system/system.html).
+`previous_stage` usa una piccola struttura RTC non reinizializzata al reset,
+con firma e checksum; dopo perdita di alimentazione o memoria RTC non valida
+può essere `unavailable`. Il contatore di avvii riparte dall'accensione.
+
+Un reset anomalo riprende il calendario senza riaprire i Settings solo se il
+contesto RTC è valido e conferma che i Settings erano già stati completati nella
+sessione, con credenziali Wi-Fi disponibili. Le sole credenziali salvate non
+bastano: un watchdog del bootloader, prima di eseguire il firmware, deve aprire
+il portale. Lo stesso vale se il reset interrompe la prima schermata Settings.
+I campi `rtc_context` e `resume` del log indicano queste decisioni.
+Dopo **tre reset anomali consecutivi**, prima di completare
+un ciclo, viene aperto il portale per leggere i log e correggere le impostazioni.
+Alla chiusura o scadenza dei 10 minuti di inattività, quel ciclo va in sleep
+prima di ritentare al risveglio successivo. La schermata Settings rimane visibile
+sull'e-paper durante questa attesa, anche se il Wi-Fi è spento. Un'accensione
+manuale continua ad aprire normalmente il portale.
+
+Se il monitor mostra `flash read err, 1000` subito dopo `POWERON_RESET`, seguito
+da `RTCWDT_RTC_RESET`, il primo errore avviene nella ROM, prima del codice
+FramEInk. Non è un errore del parser del calendario e non può essere scritto
+direttamente nei log SD dal firmware. La configurazione VS Code usa **DIO,
+40 MHz**, i valori predefiniti del pacchetto Inkplate, da applicare con un nuovo
+upload. Questo riduce la frequenza della flash rispetto alla precedente
+configurazione a 80 MHz; non dimostra né garantisce la risoluzione dell'errore
+di avvio, che va verificata con accensioni reali.
+
+Protezioni del percorso foto → calendario:
+
+- Il download riserva sempre il byte finale `\0`: nessuna ricerca prima
+  dell'inizio del buffer e nessuna scrittura oltre la capacità. Il calendario
+  ha un limite di 1.999.999 byte di contenuto e viene accettato solo completo;
+  una risposta HTML, tronca o con NUL interno viene scartata.
+- Le richieste hanno timeout di connessione/lettura di 10 secondi e handshake
+  TLS di 15 secondi. La lettura del corpo ha limite totale di 45 secondi e
+  inattività massima di 8 secondi. Si richiede HTTP/1.0; risposte che impongono
+  comunque chunked o compressione vengono scartate e segnalate nel log.
+  I redirect sono limitati a tre. Il calendario fa una richiesta per ciclo,
+  senza ripetere indefinitamente gli errori HTTP.
+- Il meteo ha un limite di 32 KiB, verifica il JSON e gestisce campi mancanti,
+  stringhe lunghe e valori numerici fuori intervallo senza copiare puntatori
+  nulli o oltrepassare i campi del modello.
+- Il parser del calendario sposta i buffer più grandi dallo stack all'heap,
+  verifica le allocazioni, limita il lavoro a 100.000 passi/10 secondi e lascia
+  periodicamente eseguire il task idle. Le ricorrenze e i calcoli di data
+  sono limitati; le date accettate sono 1970–2037 per il core con `time_t`
+  a 32 bit. Gli eventi di molti anni vengono ritagliati ai giorni visibili.
+- Le foto illeggibili vengono saltate con al massimo otto tentativi per ciclo.
+
+Questi sono log diagnostici applicativi, **non un core dump o un backtrace**
+completo. Non si scrive sulla SD dentro il gestore di crash: l'ultima fase viene
+salvata prima dell'operazione e il motivo del reset al successivo avvio.
+Un'interruzione di alimentazione durante una scrittura può comunque perdere
+l'ultima riga o danneggiare il filesystem. Con SD assente, piena o guasta il
+firmware continua con i log seriali; una scrittura fallita disabilita altri
+tentativi di log su SD fino al risveglio successivo. Errori prima dell'inizializzazione
+SD o dentro i driver richiedono eventualmente anche il monitor seriale.
+
+Test dei nuovi casi di errore, con AddressSanitizer/UndefinedBehaviorSanitizer,
+SD/rete/reset simulati e il vero parser ArduinoJson installato per il firmware:
+
+```sh
+bash tests/reliability/run.sh
+# Su un'altra installazione:
+ARDUINOJSON_DIR=/percorso/ArduinoJson/src bash tests/reliability/run.sh
+```
+
+Sono coperti limiti dei buffer, frammentazione, download troncati, timeout e
+wrap di `millis()`, meteo incompleto/malformato, ricorrenze costose, errori HTTP,
+PSRAM indisponibile, alternanza offline, recupero dopo reset, rotazione e guasti
+SD. Il test `photo_upload_test.cpp` copre anche i download dei log e il rifiuto
+di percorsi arbitrari. Restano da verificare sulle board reali i cicli prolungati,
+la SD fisica e l'alimentazione; i test host non riproducono guasti elettrici.
 
 ## Risvegli orari e pausa notturna
 
@@ -234,6 +354,92 @@ validazione, salvataggio/rilettura, errore di commit e disabilitazione pausa:
 ```sh
 clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -Itests/settings/mocks -Itests/photo_upload/mocks -IFramEink.Core/src/WiFiAccessPoint tests/settings/settings_test.cpp FramEink.Core/src/WiFiAccessPoint/WiFiAPSettings.cpp FramEink.Core/src/WiFiAccessPoint/PhotoUploadService.cpp -o /tmp/frameink-settings-test
 /tmp/frameink-settings-test
+```
+
+## Blocco upload sulla scheda sbagliata
+
+**Upload in VS Code** usa il wrapper incluso in
+`.vscode/arduino-cli-wrapper/bin/arduino-cli`. Dopo la prima configurazione o un
+cambio di `arduino.path` / `arduino.commandPath`, esegui **Developer: Reload Window**:
+l'estensione memorizza il percorso del CLI fino alla ricarica della finestra.
+Subito prima della scrittura il wrapper controlla che il firmware corrisponda al modello selezionato e che il MAC
+letto dalla scheda collegata sia registrato per quel modello.
+Una scheda sconosciuta, il modello sbagliato, un errore di lettura, un registro
+non valido o un binario senza identificazione **bloccano l'upload**.
+La compilazione con i precedenti `#error` continua a verificare anche
+l'abbinamento tra sketch e scheda selezionata.
+
+Le due Inkplate usano entrambe ESP32: l'identificazione del chip effettuata
+da esptool non basta a distinguere il display. Occorre associare **una volta**
+ciascuna scheda fisica al proprio modello, controllando il modello sulla scheda.
+Il wrapper usa il MAC, non il nome della porta USB o il firmware già presente.
+Per registrare le due schede, collegale **una alla volta** ed esegui dalla
+cartella del progetto, sostituendo la porta se diversa:
+
+```sh
+# Eseguire con la vera Inkplate 10 collegata:
+python3 tools/board_guard.py register --model Inkplate10 --port /dev/tty.usbserial-110
+
+# Poi scollegarla e collegare la vera Inkplate 6 Color:
+python3 tools/board_guard.py register --model Inkplate6COLOR --port /dev/tty.usbserial-110
+```
+
+La registrazione legge il MAC con esptool, riavvia la scheda e salva
+l'associazione in `.vscode/board-identities.local.json` sul computer.
+Non carica firmware e non modifica eFuse o partizioni. Il file è escluso da
+Git; una registrazione esistente non viene riassegnata automaticamente a un
+modello diverso. Se il file manca, la protezione resta attiva e blocca le schede
+non registrate. La dichiarazione iniziale del modello deve essere corretta:
+il MAC identifica la singola scheda, non contiene il modello del display.
+
+Il comando `prebuild` di `.vscode/arduino.json` verifica anche la scheda **prima
+della compilazione** quando premi Upload: un dispositivo sconosciuto o diverso
+interrompe l'operazione subito, anche se l'estensione conserva un vecchio percorso
+del CLI. Durante Verify e l'analisi IntelliSense non apre la porta seriale.
+Il controllo finale del wrapper ripete la verifica prima della scrittura.
+
+Dopo la registrazione usa normalmente **Upload** in VS Code. Per esempio,
+se selezioni 6 Color e colleghi la 10, l'output mostra:
+
+```text
+Scheda collegata: Inkplate10 (...). Firmware selezionato: Inkplate6COLOR.
+UPLOAD BLOCCATO: collega la scheda corretta.
+```
+
+Il controllo legge anche un identificatore incluso nel file `.ino.bin`, prima
+di aprire la porta, per evitare di caricare un vecchio binario o quello dell'altro
+modello. I binari precedenti a questa protezione devono essere ricompilati.
+Il flusso `compile --upload` viene eseguito come compilazione seguita da upload
+con verifica finale; se la compilazione fallisce, l'upload non parte.
+I messaggi `[Board guard]` sono visibili anche con il livello di log normale
+dell'estensione: il completamento viene annunciato soltanto dopo il successo
+del comando di scrittura. La sola riga `[Done]` dell'estensione, senza i messaggi
+del controllo, non conferma che il percorso protetto sia stato eseguito.
+Non occorre installare pyserial: viene usato esptool della piattaforma Arduino.
+La lettura MAC ha timeout di 35 secondi; una porta occupata o assente blocca
+l'operazione. Chiudi prima il monitor seriale.
+
+La protezione è attiva attraverso il wrapper del progetto. Per usare il
+terminale richiama lo stesso wrapper, per esempio:
+
+```sh
+.vscode/arduino-cli-wrapper/bin/arduino-cli compile --upload \
+  --fqbn Inkplate_Boards:esp32:Inkplate6COLOR:PartitionScheme=huge_app \
+  --port /dev/tty.usbserial-110 --build-path .build/inkplate6color FramEink_6Color
+```
+
+Il comando globale `arduino-cli`, Arduino IDE e un esptool lanciato direttamente
+seguono le proprie procedure: per mantenere il controllo usa VS Code o il
+wrapper. Programmatore esterno e OTA non sono supportati da questo percorso.
+`.vscode/settings.json` punta al wrapper nella cartella attuale; se sposti il
+progetto, aggiorna `arduino.path`. Il vero CLI viene trovato nell'installazione
+Arduino IDE su macOS o nel PATH; in alternativa imposta
+`FRAMEINK_ARDUINO_CLI=/percorso/del/vero/arduino-cli`.
+
+Test della protezione, senza schede e senza scrivere firmware:
+
+```sh
+python3 tests/upload_guard/upload_guard_test.py
 ```
 
 ## Compilazione e verifiche del portale

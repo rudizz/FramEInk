@@ -1,4 +1,5 @@
 #include "ApplicationController.h"
+#include "../Diagnostics/DiagnosticLog.h"
 
 namespace frameink {
 
@@ -24,7 +25,7 @@ void ApplicationController::setServices(
     calendarService_ = calendarService;
 }
 
-RefreshResult ApplicationController::executeCycle(ApplicationRuntime &runtime, IApplicationRenderer &renderer)
+RefreshResult ApplicationController::executeCycle(ApplicationRuntime &runtime, IApplicationRenderer &renderer, bool recoveryOnly)
 {
     RefreshResult result;
     dashboard_.deviceConfiguration = DeviceConfiguration{};
@@ -42,32 +43,43 @@ RefreshResult ApplicationController::executeCycle(ApplicationRuntime &runtime, I
 
     if (!runtime.settingsOk)
     {
+        diagnosticStage("settings_portal");
         settingsProvider_->beginPortal();
         renderer.renderSettingsPortal(*settingsProvider_);
         settingsProvider_->waitUntilConfigured();
         runtime.settingsOk = true;
+        if (recoveryOnly)
+        {
+            diagnosticLog("Repeated resets: recovery portal closed; sleeping before another attempt");
+            result.shouldPresent = false;
+            return result;
+        }
         renderer.renderSettingsSaved();
     }
 
     dashboard_.deviceConfiguration = settingsProvider_->currentConfiguration();
     network_->configuration().device = dashboard_.deviceConfiguration;
+    if (dashboard_.deviceConfiguration.hasWiFiCredentials())
+        diagnosticConfigurationReady();
 
     result.mode = runtime.stateCalendar ? RefreshMode::Dashboard : RefreshMode::Photo;
 
     if (result.mode == RefreshMode::Photo)
     {
+        diagnosticStage("photo_render");
         renderer.renderPhoto(runtime, dashboard_.deviceConfiguration.photoOrder);
     }
     else
     {
-        network_->begin();
-        if (network_->loadWeatherForecast(dashboard_.weather))
+        const bool connected = network_->begin();
+        if (connected && network_->loadWeatherForecast(dashboard_.weather))
             runtime.timeZoneSeconds = dashboard_.weather.timeZoneSeconds;
         else
             dashboard_.weather.timeZoneSeconds = runtime.timeZoneSeconds;
         network_->configuration().timeZoneSeconds = runtime.timeZoneSeconds;
 
         dashboard_.hasCalendar =
+            connected &&
             dashboard_.deviceConfiguration.hasCalendarUrl() &&
             calendarService_ != nullptr &&
             calendarService_->loadAgenda(
@@ -76,6 +88,7 @@ RefreshResult ApplicationController::executeCycle(ApplicationRuntime &runtime, I
                 refreshPolicy_.visibleDays,
                 network_->getNowEpoch(true));
 
+        diagnosticStage("dashboard_render");
         renderer.renderDashboard(dashboard_, runtime);
     }
 

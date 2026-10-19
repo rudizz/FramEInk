@@ -42,14 +42,13 @@ class Network
     const frameink::NetworkConfiguration &configuration() const;
 
     // Functions we can access in main file
-    void begin();
+    bool begin();
     bool timeSynchronized() const { return timeSynchronized_; }
     void getTime(char *timeStr, long offset = 0);
     time_t getNowEpoch(bool withTimezone);
     void getTimeHour(int *timeHour, long offSet);
-    long getDataCalendar(char *data);
+    long getDataCalendar(char *data, size_t capacity);
     bool loadWeatherForecast(frameink::WeatherForecast &forecast);
-    float getRainSnowPrecipitationMM(bool isSnowing, int day);
     void getDaysLabel(char *day, char *day1, char *day2, char *day3);
     
   private:
@@ -59,6 +58,7 @@ class Network
 
     frameink::NetworkConfiguration defaultConfiguration_;
     bool timeSynchronized_ = false;
+    bool connectionFailed_ = false; // One bounded Wi-Fi attempt per wake cycle.
     frameink::NetworkConfiguration *configuration_ = &defaultConfiguration_;
 };
 

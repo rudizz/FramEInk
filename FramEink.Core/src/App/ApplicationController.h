@@ -12,8 +12,11 @@
 
 namespace frameink {
 
+constexpr uint32_t runtimeSignature = 0x46495232;
+
 struct ApplicationRuntime
 {
+    uint32_t signature;
     bool settingsOk;
     bool stateCalendar;
     int timeZoneSeconds;
@@ -50,6 +53,7 @@ struct RefreshResult
     RefreshMode mode = RefreshMode::Dashboard;
     time_t startedEpoch = 0;
     long long sleepMinutes = 60ll;
+    bool shouldPresent = true;
 };
 
 class IApplicationRenderer
@@ -78,7 +82,7 @@ class ApplicationController
         IDeviceConfigurationProvider *settingsProvider,
         CalendarService *calendarService);
 
-    RefreshResult executeCycle(ApplicationRuntime &runtime, IApplicationRenderer &renderer);
+    RefreshResult executeCycle(ApplicationRuntime &runtime, IApplicationRenderer &renderer, bool recoveryOnly = false);
 
   private:
     Network *network_ = nullptr;

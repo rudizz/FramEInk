@@ -14,6 +14,7 @@
 #include "icons_color.h"
 
 #include <cmath>
+#include <new>
 
 class FramEink6ColorRenderer : public frameink::IApplicationRenderer
 {
@@ -45,7 +46,7 @@ class FramEink6ColorRenderer : public frameink::IApplicationRenderer
         display_.setTextColor(0, 7);
 
         if (sdPhoto_ == nullptr)
-            sdPhoto_ = new SDPhotoClass(&display_);
+            sdPhoto_ = new (std::nothrow) SDPhotoClass(&display_);
     }
 
     void present()

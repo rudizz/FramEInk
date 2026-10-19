@@ -322,6 +322,11 @@ paket-files/
 __pycache__/
 *.pyc
 
+# Workspace upload guard; physical board registrations stay on this computer.
+!.vscode/arduino-cli-wrapper/bin/
+!.vscode/arduino-cli-wrapper/bin/arduino-cli
+.vscode/board-identities.local.json
+
 # Cake - Uncomment if you are using it
 # tools/**
 # !tools/packages.config

@@ -16,6 +16,7 @@ class String {
     template<class T, typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
     String(T value) : value_(std::to_string(value)) {}
     const char *c_str() const { return value_.c_str(); }
+    bool startsWith(const char *prefix) const { return value_.rfind(prefix, 0) == 0; }
     size_t length() const { return value_.size(); }
     void reserve(size_t size) { value_.reserve(size); }
     void replace(char from, char to) { std::replace(value_.begin(), value_.end(), from, to); }

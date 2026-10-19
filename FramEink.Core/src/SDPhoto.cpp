@@ -5,6 +5,7 @@
 #include "SDPhoto.h"
 #include "InkplateImageCompat.h"
 #include <strings.h>
+#include "Diagnostics/DiagnosticLog.h"
 
 namespace {
 
@@ -95,6 +96,7 @@ bool SDPhotoClass::getFilePath(
             }
         }
 		file.close();
+        delay(1);
 	}
 	dir.close();
 
@@ -142,7 +144,7 @@ void SDPhotoClass::drawImageFromSD(int x, int y, PhotoOrientation orientation,
 		return;
 	}
 
-	const char *dirName;
+	const char *dirName = "/landscape/";
 	switch (orientation)
 	{
 	case SDPhotoClass::PhotoOrientation::landscape:
@@ -157,6 +159,7 @@ void SDPhotoClass::drawImageFromSD(int x, int y, PhotoOrientation orientation,
 	char filePath[112];
 	uint availableFileCount = 0;
 	uint failedAttempts = 0;
+    sequence.lastFileName[sizeof(sequence.lastFileName) - 1] = 0;
 
 	while (true)
 	{
@@ -171,10 +174,12 @@ void SDPhotoClass::drawImageFromSD(int x, int y, PhotoOrientation orientation,
 		if (DEBUG_PRINT)
 			Serial.println(filePath);
 
+        frameink::diagnosticStage("photo_decode");
 		if (frameink::drawImage(*display, filePath, x, y, true, false))
 		{
 			if (DEBUG_PRINT)
 				Serial.println("Draw Image true");
+            frameink::diagnosticLog("Photo decoded successfully");
 			return;
 		}
 
@@ -182,10 +187,11 @@ void SDPhotoClass::drawImageFromSD(int x, int y, PhotoOrientation orientation,
 			Serial.println("Draw Image false");
 
 		++failedAttempts;
+        frameink::diagnosticLog("Photo decode failed attempt=%u", failedAttempts);
         // After a random first choice, visit the remaining files in name order
         // so a corrupt photo cannot cause retries of the same file indefinitely.
         order = frameink::PhotoOrder::Alphabetical;
-		if (failedAttempts >= availableFileCount)
+		if (failedAttempts >= availableFileCount || failedAttempts >= 8)
 		{
 			showError("Unable to draw photos in ", dirName);
 			return;

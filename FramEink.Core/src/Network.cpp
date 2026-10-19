@@ -17,9 +17,63 @@ Distributed as-is; no warranty is given.
 #include "Network.h"
 #include "Connectivity/WiFiConnection.h"
 #include "Connectivity/TimeSync.h"
+#include "Connectivity/BoundedHttpBody.h"
+#include "Weather/WeatherParser.h"
+#include "Diagnostics/DiagnosticLog.h"
 
-// Shared JSON document for weather parsing.
-JsonDocument doc;
+namespace {
+bool downloadBody(const String &url, char *data, size_t capacity, size_t &size)
+{
+    size = 0;
+    if (!data || capacity == 0) return false;
+    data[0] = 0;
+    WiFiClient plain;
+    WiFiClientSecure secure;
+    // Preserve the existing TLS policy, but bound the TLS handshake as well.
+    secure.setInsecure();
+    secure.setHandshakeTimeout(15);
+    HTTPClient http;
+    http.useHTTP10(true); // Request identity framing; never parse chunk headers as iCalendar/JSON.
+    http.setReuse(false);
+    http.setConnectTimeout(10000);
+    http.setTimeout(10000);
+    http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+    http.setRedirectLimit(3);
+    const char *headers[] = {"Transfer-Encoding", "Content-Encoding"};
+    http.collectHeaders(headers, 2);
+    bool begun = false;
+    if (url.startsWith("https://")) begun = http.begin(secure, url);
+    else if (url.startsWith("http://")) begun = http.begin(plain, url);
+    if (!begun)
+    {
+        frameink::diagnosticLog("HTTP begin failed or unsupported URL scheme");
+        return false;
+    }
+    const int code = http.GET();
+    bool loaded = false;
+    const String transfer = http.header("Transfer-Encoding");
+    const String encoding = http.header("Content-Encoding");
+    if (code == HTTP_CODE_OK && (transfer.length() == 0 || transfer == "identity") &&
+        (encoding.length() == 0 || encoding == "identity"))
+    {
+        WiFiClient *stream = http.getStreamPtr();
+        if (stream)
+        {
+            const auto result = frameink::readHttpBody(*stream, data, capacity, http.getSize());
+            size = result.size;
+            loaded = result.status == frameink::BodyStatus::Ok;
+            frameink::diagnosticLog("HTTP body status=%d bytes=%u declared=%d", int(result.status),
+                unsigned(size), http.getSize());
+        }
+    }
+    else frameink::diagnosticLog("HTTP rejected code=%d or unsupported response encoding", code);
+    // Stop first: this core's end()/disconnect() may drain an unbounded response.
+    plain.stop();
+    secure.stop();
+    http.end();
+    return loaded;
+}
+} // namespace
 
 // Declared week days
 char weekDays[7][4] = {
@@ -53,24 +107,29 @@ const frameink::NetworkConfiguration &Network::configuration() const
 
 bool Network::connectWiFi()
 {
-    if (frameink::ensureWiFiConnected(configuration_->device.wifiSsid.c_str(),
+    if (connectionFailed_) return false;
+    frameink::diagnosticStage("wifi_connect");
+    if (configuration_->device.hasWiFiCredentials() &&
+        frameink::ensureWiFiConnected(configuration_->device.wifiSsid.c_str(),
                                      configuration_->device.wifiPassword.c_str()))
+    {
+        frameink::diagnosticLog("WiFi connected RSSI=%ld", static_cast<long>(WiFi.RSSI()));
         return true;
-
-    // Preserve the existing recovery on a prolonged connection failure.
-    Serial.println(F("[WiFi] Can't connect to WiFi, restarting."));
-    delay(100);
-    ESP.restart();
+    }
+    connectionFailed_ = true;
+    frameink::diagnosticLog("WiFi unavailable; skipping network requests this cycle (no restart)");
     return false;
 }
 
-void Network::begin()
+bool Network::begin()
 {
-    if (!connectWiFi())
-        return;
-
-    // Find internet time
+    connectionFailed_ = false;
+    timeSynchronized_ = false;
+    if (!connectWiFi()) return false;
+    frameink::diagnosticStage("ntp_sync");
     setTime();
+    frameink::diagnosticLog("NTP fresh=%d", timeSynchronized_);
+    return true;
 }
 
 // Gets time from ntp server
@@ -112,219 +171,55 @@ void Network::getTimeHour(int *timeHour, long offSet)
     *timeHour = timeinfo.tm_hour;
 }
 // Function to get all calendar data from web
-long Network::getDataCalendar(char *data)
+long Network::getDataCalendar(char *data, size_t capacity)
 {
-    // Variable to store fail
-    bool f = 0;
-
-    if (!connectWiFi())
-        return 1;
-
-    // Http object used to make get request
-    HTTPClient http;
-
-    http.getStream().setTimeout(20);
-    http.getStream().flush();
-
-    // Begin http by passing url to it
-    http.begin(configuration_->device.calendarUrl);
-
-    delay(300);
-
-    // Actually do request
-    int httpCode = http.GET();
-    long n = 0;
-    if (httpCode == 200)
+    if (!data || capacity == 0) return 0;
+    data[0] = 0;
+    if (!connectWiFi()) return 0;
+    frameink::diagnosticStage("calendar_download");
+    size_t size = 0;
+    if (!downloadBody(configuration_->device.calendarUrl, data, capacity, size)) return 0;
+    if (size == 0 || memchr(data, 0, size) != nullptr ||
+        strncmp(data, "BEGIN:VCALENDAR", 15) != 0 || strstr(data, "END:VCALENDAR") == nullptr)
     {
-        long timeCal = millis();
-        size_t conta = 0;
-        size_t contaWhile = 0;
-        while ((n < 15 || strstr(data + n - 30, "END:VCALENDAR") == nullptr) && contaWhile < 20)
-        {
-         
-            // Limito il while al max size del buffer SIZE_CALENDAR_DATA
-            while (n - 4 < SIZE_CALENDAR_DATA && http.getStream().available()) {
-                data[n++] = http.getStream().read();
-                conta = 0;
-                //if (n < 1000) // print calendar data
-                    //Serial.print(data[n-1]);
-                while (!http.getStream().available() && conta < 10) // aggiungo questo controllo altrimenti esce prima di aver scaricato tutto
-                {
-                    delay(100);
-                    if (DEBUG_PRINT)
-                        Serial.printf("Calendar waiting %i...\n", conta);
-                    conta++;
-                }
-            }
-            contaWhile++;
-            data[n] = '\0';
-        }
-        if (DEBUG_PRINT)
-            Serial.printf("Calendar downloaded in [ms]: %d, %i bytes\n", millis() - timeCal, n);
-        data[n++] = 0;
+        frameink::diagnosticLog("Calendar response incomplete or invalid");
+        data[0] = 0;
+        return 0;
     }
-    else
-    {
-        if (DEBUG_PRINT)
-            Serial.printf("HTTP CODE: %d\n", httpCode);
-        f = 1;
-        n = 1;
-    }
-
-    // end http
-    http.end();
-
-    return n;
-}
-
-// ====  WEATHER  =====
-void formatTemp(char *str, float temp)
-{
-    // Avoid displaying a negative zero when a small negative value rounds to 0.
-    if (temp > -0.5f && temp < 0.0f)
-        temp = 0.0f;
-
-    // Built in function for float to char* conversion
-    dtostrf(temp, 2, 0, str);
-}
-
-void formatProbOfRain(char *str, float pop)
-{
-    // Built in function for float to char* conversion
-    dtostrf(pop, 3, 0, str);
-}
-
-void formatPrecipitationMM(char *str, float rain)
-{
-    // Built in function for float to char* conversion
-    if (rain < 10)
-        dtostrf(rain, 3, 1, str);
-    else
-        dtostrf(rain, 3, 0, str);
-}
-
-void formatWind(char *str, float wind)
-{
-    // Built in function for float to char* conversion
-    dtostrf(wind, 2, 0, str);
-}
-
-void padZeros(char* charStr) //this doesn't handle negative numbers
-{
-    for (int i = 0; i < strlen(charStr); i++)
-    {
-        if (charStr[i] == ' ')
-            charStr[i] = '0';
-        else
-            break;
-    }
-}
-
-void formatSunrise(char *str, time_t epochSunrise)
-{
-    tm tm_sunrise;
-    gmtime_r(&epochSunrise, &tm_sunrise);
-    
-    // Built in function for float to char* conversion
-    dtostrf(tm_sunrise.tm_hour, 2, 0, str);
-    strcpy(str + 2, ":");
-    dtostrf(tm_sunrise.tm_min, 2, 0, str + 3);
-    padZeros(str + 3);
+    return static_cast<long>(size);
 }
 
 bool Network::loadWeatherForecast(frameink::WeatherForecast &forecast)
 {
-    if (!connectWiFi())
-        return false;
-
-    // Wake up if sleeping and save initial state
-    bool sleep = WiFi.getSleep();
+    if (!connectWiFi()) return false;
+    frameink::diagnosticStage("weather_download");
+    const bool sleep = WiFi.getSleep();
     WiFi.setSleep(false);
-
-    // Http object used to make get request
-    HTTPClient http;
-
-    http.getStream().setNoDelay(true);
-    http.getStream().setTimeout(5);
-
-    // Add woeid to api call
+    constexpr size_t capacity = 32769;
+    char *data = static_cast<char *>(ps_malloc(capacity));
+    if (!data) data = static_cast<char *>(malloc(capacity));
+    if (!data)
+    {
+        frameink::diagnosticLog("Weather buffer allocation failed");
+        WiFi.setSleep(sleep);
+        return false;
+    }
     char url[256];
-    //sprintf(url, "https://www.metaweather.com/api/location/%d/", location);
-    sprintf(url,
+    snprintf(url, sizeof(url),
         "https://api.openweathermap.org/data/3.0/onecall?units=metric&exclude=current,minutely,hourly,alerts&lat=%.4f&lon=%.4f&appid=136b1eed9485c22eee88ea1c437650af",
         configuration_->device.coordinates.latitude,
         configuration_->device.coordinates.longitude);
-    // https://api.openweathermap.org/data/3.0/onecall?units=metric&exclude=current,minutely,hourly,alerts&lat=48.150914&lon=11.567003&appid=136b1eed9485c22eee88ea1c437650af
-
-    // Initiate http
-    http.begin(url);
-
-    // Actually do request
-    int httpCode = http.GET();
-    bool loaded = false;
-    if (httpCode == 200)
+    size_t size = 0;
+    bool loaded = downloadBody(String(url), data, capacity, size);
+    if (loaded)
     {
-        int32_t len = http.getSize();
-
-        if (len > 0)
-        {
-            doc.clear();
-            // Try parsing JSON object
-            DeserializationError error = deserializeJson(doc, http.getStream());
-
-            // If an error happens print it to Serial monitor
-            if (error)
-            {
-                if (DEBUG_PRINT)
-                    Serial.printf("deserializeJson() failed: %s\n", error.c_str());
-            }
-            else
-            {
-                // Set all data got from internet using formatTemp and formatWind defined above
-                // This part relies heavily on ArduinoJson library
-                formatTemp(forecast.currentTemperature, doc["daily"][0][F("temp")]["day"].as<float>());
-                formatWind(forecast.currentWind, doc["daily"][0][F("wind_speed")].as<float>());
-                forecast.timeZoneSeconds = doc["timezone_offset"].as<int>();
-
-                for (size_t day = 0; day < frameink::WeatherForecast::DayCount; ++day)
-                {
-                    frameink::WeatherDayForecast &dayForecast = forecast.days[day];
-
-                    strcpy(dayForecast.condition, doc["daily"][day]["weather"][0]["main"].as<const char *>());
-                    strcpy(dayForecast.iconCode, doc["daily"][day]["weather"][0]["icon"].as<const char *>());
-
-                    formatTemp(dayForecast.minimumTemperature, doc["daily"][day]["temp"][F("min")].as<float>());
-                    formatTemp(dayForecast.maximumTemperature, doc["daily"][day]["temp"][F("max")].as<float>());
-                    formatProbOfRain(dayForecast.precipitationProbability, doc["daily"][day][F("pop")].as<float>() * 100);
-                    dayForecast.hasPrecipitation = doc["daily"][day][F("pop")].as<float>() > 0.0f;
-                    formatPrecipitationMM(
-                        dayForecast.precipitationMillimeters,
-                        getRainSnowPrecipitationMM(strcmp(dayForecast.iconCode, "13d") == 0, day));
-                    dayForecast.moonPhase = doc["daily"][day][F("moon_phase")].as<float>();
-                    formatSunrise(dayForecast.sunrise, doc["daily"][day][F("sunrise")].as<time_t>() + forecast.timeZoneSeconds);
-                    formatSunrise(dayForecast.sunset, doc["daily"][day][F("sunset")].as<time_t>() + forecast.timeZoneSeconds);
-                }
-
-                loaded = true;
-            }
-        }
+        frameink::diagnosticStage("weather_parse");
+        loaded = frameink::parseWeather(data, size, forecast);
     }
-
-    // Clear document and end http
-    doc.clear();
-    http.end();
-
-    // Return to initial state
+    frameink::diagnosticLog("Weather loaded=%d", loaded);
+    free(data);
     WiFi.setSleep(sleep);
     return loaded;
-}
-
-float Network::getRainSnowPrecipitationMM(bool isSnowing, int day)
-{
-    if (isSnowing)
-        return doc["daily"][day][F("snow")].as<float>();
-    else
-        return doc["daily"][day][F("rain")].as<float>();
 }
 
 void Network::setTime()

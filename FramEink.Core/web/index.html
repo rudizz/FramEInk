@@ -125,5 +125,11 @@ dialog img{display:block;max-width:100%;max-height:68vh;object-fit:contain;margi
 </form>
 <div id="settings-status" class="status" role="status" aria-live="polite"></div>
 </details>
+<details class="card" id="diagnostics">
+<summary>Diagnostics and restart logs</summary>
+<p>Logs are saved automatically on the SD card. After an unexpected restart, download both available files to help diagnose the problem.</p>
+<div class="actions"><a href="/api/logs?file=current" download="frameink-current.log">Download current log</a><a href="/api/logs?file=previous" download="frameink-previous.log">Download previous log</a></div>
+<p class="muted">The previous log is available after rotation. Logs use at most 512 KiB in total and contain no Wi-Fi passwords, calendar links or event titles. To reopen this portal, turn the frame off and on again. After repeated failures, closing the recovery portal puts the frame to sleep before retrying.</p>
+</details>
 <footer>Tap “Finish” when you are done: FramEInk will display the calendar and go to sleep. The portal closes after 10 minutes of inactivity; it stays open during conversion and transfer. To reopen it, turn the frame off and on again. Your photos stay on the SD card.</footer>
 </main></body></html>

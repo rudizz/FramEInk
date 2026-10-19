@@ -8,10 +8,10 @@ struct WeatherDayForecast
 {
     char condition[32] = "-";
     char iconCode[16] = "";
-    char minimumTemperature[4] = "--";
-    char maximumTemperature[4] = "--";
+    char minimumTemperature[8] = "--";
+    char maximumTemperature[8] = "--";
     char precipitationProbability[5] = "--";
-    char precipitationMillimeters[5] = "--";
+    char precipitationMillimeters[8] = "--";
     char sunrise[6] = "--:--";
     char sunset[6] = "--:--";
     float moonPhase = 0.0f;

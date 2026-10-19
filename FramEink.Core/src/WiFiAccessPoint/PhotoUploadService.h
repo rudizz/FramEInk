@@ -20,6 +20,7 @@ class PhotoUploadService
     void sendUploadResult();
     void listPhotos();
     void servePhoto();
+    void serveLogs();
     void deletePhoto();
     bool galleryReady();
     bool openRequestedPhoto(SdFile &file, bool writable = false);
