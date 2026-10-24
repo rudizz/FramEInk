@@ -1,6 +1,6 @@
 #pragma once
 #include <Arduino.h>
-struct IPAddress {};
+#include "../../settings/mocks/IPAddress.h"
 struct MockWiFi {
     bool sleeping = true;
     bool getSleep() { return sleeping; }

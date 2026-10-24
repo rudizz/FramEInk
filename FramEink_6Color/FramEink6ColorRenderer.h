@@ -91,9 +91,9 @@ class FramEink6ColorRenderer : public frameink::IApplicationRenderer
         display_.setTextColor(INKPLATE_BLACK);
 
         display_.setCursor(15, 145);
-        display_.println("2. Open your web browser and");
+        display_.println("2. Settings open automatically");
         display_.setCursor(display_.getCursorX() + 60, display_.getCursorY());
-        display_.print("go to: ");
+        display_.print("Or open: ");
 
         display_.setTextColor(INKPLATE_GREEN);
         display_.print("http://");

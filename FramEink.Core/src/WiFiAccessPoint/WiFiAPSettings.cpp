@@ -1,6 +1,7 @@
 #include "WiFiAPSettings.h"
 #include <ArduinoJson.h>
 #include <cmath>
+#include "../Diagnostics/DiagnosticLog.h"
 
 WiFiAPSettingsClass::WiFiAPSettingsClass()
 {
@@ -23,11 +24,17 @@ void WiFiAPSettingsClass::initAP()
     WiFi.softAP(SSID_AP_Settings, passwordAP);
     serverIP = WiFi.softAPIP();
     settingsDone_ = false;
+    const bool dnsReady = dns_.start(serverIP);
+    frameink::diagnosticLog("Captive portal DNS=%d IP=%s", int(dnsReady), serverIP.toString().c_str());
 
     photos_.begin(server_);
     server_.on("/api/settings", HTTP_GET, [this]() { sendSettings(); });
     server_.on("/api/settings", HTTP_POST, [this]() { saveSettings(); });
     server_.on("/api/finish", HTTP_POST, [this]() { finish(); });
+    // Apple hotspot-detect, Android generate_204, Windows connecttest/ncsi,
+    // Firefox success.txt and other HTTP probes all take this route. Never
+    // pretend Internet is available: redirect to the existing local Settings.
+    server_.onNotFound([this]() { redirectToPortal(); });
     server_.begin();
 }
 
@@ -38,12 +45,30 @@ void WiFiAPSettingsClass::loop()
     // must still time out, rather than keeping the frame awake indefinitely.
     while (!settingsDone_ && millis() - photos_.lastActivity() < idleTimeout)
     {
+        dns_.processNextRequest();
         server_.handleClient();
         delay(1);
     }
     photos_.end();
     server_.stop();
+    dns_.stop();
     WiFi.softAPdisconnect(true);
+}
+
+void WiFiAPSettingsClass::redirectToPortal()
+{
+    const String path = server_.uri();
+    // Leave errors from API clients as errors rather than returning an HTML
+    // page. OS probes do not count as user activity and must not prevent sleep.
+    if ((server_.method() != HTTP_GET && server_.method() != HTTP_HEAD) ||
+        path == "/api" || path.startsWith("/api/"))
+    {
+        server_.send(404, "text/plain; charset=utf-8", "Not found");
+        return;
+    }
+    server_.sendHeader("Cache-Control", "no-store");
+    server_.sendHeader("Location", String("http://") + serverIP.toString() + "/");
+    server_.send(302, "text/plain; charset=utf-8", "Open FramEInk Settings");
 }
 
 void WiFiAPSettingsClass::sendSettings()

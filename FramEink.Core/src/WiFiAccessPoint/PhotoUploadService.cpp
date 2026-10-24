@@ -157,7 +157,9 @@ void PhotoUploadService::begin(WebServer &server)
     server.collectHeaders(requestHeaders, 2);
     touch();
     const auto page = [this]() {
-        serveAsset(portalHtmlGzip, sizeof(portalHtmlGzip), "text/html; charset=utf-8");
+        // Connectivity probes may follow the captive redirect to this HTML.
+        // Count the real page's subsequent JS/API requests as activity instead.
+        serveAsset(portalHtmlGzip, sizeof(portalHtmlGzip), "text/html; charset=utf-8", false);
     };
     server.on("/", HTTP_GET, page);
     server.on("/foto", HTTP_GET, page);
@@ -446,13 +448,13 @@ void PhotoUploadService::deletePhoto()
     server_->send(200, "text/plain", "Photo deleted.");
 }
 
-void PhotoUploadService::serveAsset(const uint8_t *data, size_t size, const char *contentType)
+void PhotoUploadService::serveAsset(const uint8_t *data, size_t size, const char *contentType, bool userActivity)
 {
-    touch();
+    if (userActivity) touch();
     server_->sendHeader("Content-Encoding", "gzip");
     server_->sendHeader("Cache-Control", "no-cache");
     server_->send_P(200, contentType, reinterpret_cast<const char *>(data), size);
-    touch();
+    if (userActivity) touch();
 }
 
 void PhotoUploadService::discardUpload()

@@ -109,9 +109,9 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
         display_.print(settings.accessPointPassword());
 
         display_.setCursor(x1, 370);
-        display_.println("2. Open your web browser and");
+        display_.println("2. Settings open automatically");
         display_.setCursor(display_.getCursorX() + 95, display_.getCursorY());
-        display_.print("go to: ");
+        display_.print("Or open: ");
 
         display_.setTextColor(0);
         display_.print("http://");

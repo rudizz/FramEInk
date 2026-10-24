@@ -28,6 +28,7 @@ class String {
     friend bool operator==(const String &a, const String &b) { return a.value_ == b.value_; }
 };
 
-inline unsigned long millis() { return 1234; }
-inline void delay(int) {}
+inline unsigned long testMillis = 1234;
+inline unsigned long millis() { return testMillis; }
+inline void delay(int milliseconds) { testMillis += milliseconds; }
 inline uint32_t esp_random() { static uint32_t value = 0; return ++value; }

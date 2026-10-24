@@ -5,6 +5,7 @@
 #include <WiFi.h>
 #include <EEPROM.h>
 #include "PhotoUploadService.h"
+#include "CaptivePortalDns.h"
 #include "../Configuration/NightPause.h"
 #include "../Configuration/UpdateMinute.h"
 #include "../Configuration/PhotoOrder.h"
@@ -38,11 +39,13 @@ class WiFiAPSettingsClass
     void sendSettings();
     void saveSettings();
     void finish();
+    void redirectToPortal();
     bool readStringFromEEPROM(int &offset, String &value);
     void readEEPROM();
     bool writeEEPROM();
 
     WebServer server_{80};
+    frameink::CaptivePortalDns dns_;
     frameink::PhotoUploadService photos_;
     bool settingsDone_ = false;
 };

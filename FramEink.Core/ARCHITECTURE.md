@@ -6,6 +6,8 @@
   Contains typed configuration models such as `DeviceConfiguration` and `NetworkConfiguration`.
 - `src/WiFiAccessPoint`
   Contains persistence and access-point concerns, plus the `IDeviceConfigurationProvider` interface and `PortalSettingsService` implementation.
+  While Settings is open, bounded UDP DNS replies and HTTP probe redirects advertise a captive portal.
+  DNS/HTTP stop with the AP; background probes do not extend the user inactivity timeout.
 - `src/Weather`
   Contains the typed `WeatherForecast` model used by both displays.
 - `src/Calendar`

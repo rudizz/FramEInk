@@ -27,7 +27,7 @@ class PhotoUploadService
     void fail(int status, const char *message);
     void discardUpload();
     bool validJpeg();
-    void serveAsset(const uint8_t *data, size_t size, const char *contentType);
+    void serveAsset(const uint8_t *data, size_t size, const char *contentType, bool userActivity = true);
 
     static constexpr size_t maxPhotoBytes_ = 2 * 1024 * 1024;
     static constexpr size_t photosPerPage_ = 10;

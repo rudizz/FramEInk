@@ -16,7 +16,9 @@ FramEInk supports 6 inch color and 10 inch grayscale frames.
    di 8 caratteri mostrata sul display (il minimo supportato da WPA2).
    Cambia a ogni accensione; se necessario dimentica la
    rete memorizzata e riconnettila. È normale che la rete non abbia Internet.
-3. Apri **Safari/Chrome** su `http://192.168.4.1/` (o all'indirizzo mostrato).
+3. Attendi la finestra **Settings** oppure tocca la notifica **Accedi alla rete**:
+   FramEInk si presenta come captive portal. Se non compare, apri **Safari/Chrome**
+   su `http://192.168.4.1/` (o all'indirizzo mostrato).
    Se è la prima configurazione, salva prima le impostazioni Wi‑Fi/meteo.
 4. Premi **Select photos**: puoi scegliere più immagini dalla galleria.
    Controlla ciascuna anteprima, scegli foto intera o ritaglio a pieno schermo,
@@ -54,6 +56,17 @@ FramEInk supports 6 inch color and 10 inch grayscale frames.
    comprese le foto copiate sulla SD prima di usare il portale.
 6. Premi **Finish**: la cornice mostra il calendario e va in deep sleep.
    Al risveglio mostra la foto e torna in sleep, mantenendo l'alternanza.
+
+Il captive portal funziona su entrambi i modelli, senza Internet. Il DNS locale
+risponde alle richieste IPv4 con l'indirizzo della cornice; le verifiche HTTP di
+Apple, Android, Windows e altri sistemi vengono reindirizzate alla pagina Settings.
+L'apertura della finestra o della notifica dipende dal sistema operativo e dalle
+impostazioni della rete: l'accesso diretto tramite IP rimane disponibile. Il DNS
+è attivo solo durante i Settings e risponde con TTL zero, così i client non
+conservano in cache gli indirizzi locali quando cambiano rete.
+Le richieste di riconoscimento non prolungano da sole il timeout del portale.
+Se il servizio DNS non riesce ad avviarsi, i Settings rimangono accessibili via IP;
+il risultato è indicato nel log `Captive portal DNS=...`.
 
 La conversione avviene **sul telefono, prima del trasferimento**, anche senza
 Internet. HEIC/HEIF dell'iPhone viene decodificato nativamente quando possibile,
@@ -355,6 +368,18 @@ validazione, salvataggio/rilettura, errore di commit e disabilitazione pausa:
 clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -Itests/settings/mocks -Itests/photo_upload/mocks -IFramEink.Core/src/WiFiAccessPoint tests/settings/settings_test.cpp FramEink.Core/src/WiFiAccessPoint/WiFiAPSettings.cpp FramEink.Core/src/WiFiAccessPoint/PhotoUploadService.cpp -o /tmp/frameink-settings-test
 /tmp/frameink-settings-test
 ```
+
+Test del captive portal con DNS/UDP/server simulati: query A/AAAA ed EDNS,
+nomi lunghi, pacchetti troncati/malformati, redirect delle verifiche dei sistemi
+operativi, accesso diretto, timeout e chiusura di DNS/HTTP/AP:
+
+```sh
+clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -Itests/settings/mocks -Itests/photo_upload/mocks -IFramEink.Core/src/WiFiAccessPoint tests/settings/captive_portal_test.cpp FramEink.Core/src/WiFiAccessPoint/WiFiAPSettings.cpp FramEink.Core/src/WiFiAccessPoint/PhotoUploadService.cpp -o /tmp/frameink-captive-portal-test
+/tmp/frameink-captive-portal-test
+```
+
+I test host non verificano la comparsa della finestra del sistema operativo:
+va provata collegando un telefono o computer alla rete della scheda aggiornata.
 
 ## Blocco upload sulla scheda sbagliata
 
