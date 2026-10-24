@@ -20,7 +20,17 @@ FramEInk supports 6 inch color and 10 inch grayscale frames.
    FramEInk si presenta come captive portal. Se non compare, apri **Safari/Chrome**
    su `http://192.168.4.1/` (o all'indirizzo mostrato).
    Se è la prima configurazione, salva prima le impostazioni Wi‑Fi/meteo.
-4. Premi **Select photos**: puoi scegliere più immagini dalla galleria.
+4. Premi **Select photos**: si apre direttamente il selettore del telefono
+   (**Libreria foto / Scatta foto / Scegli file**). Scegli le foto e conferma.
+   Quando il telefono consegna i file alla pagina, compare il riquadro di
+   preparazione; terminata questa fase, appaiono l'anteprima e le regolazioni.
+   L'apertura e l'annullamento del selettore non mostrano schermate di attesa.
+   Durante l'invio alla SD il riquadro mostra numero della
+   foto, percentuale e byte trasferiti; dopo il 100% attende la conferma del
+   salvataggio dalla cornice. Un errore conserva la foto corrente per ritentare.
+   Se iOS deve prima scaricare o convertire le foto dentro il proprio selettore,
+   quella fase non è visibile al sito e non può mostrare un indicatore FramEInk.
+   La barra animata riguarda la preparazione nella pagina, dopo la consegna dei file.
    Controlla ciascuna anteprima, scegli foto intera o ritaglio a pieno schermo,
    eventualmente ruotala, poi premi **Upload photo**. Il portale passa alla
    successiva dopo il salvataggio. **Skip photo** non la trasferisce.
@@ -74,12 +84,15 @@ altrimenti con il convertitore incorporato nel firmware. Alla SD arriva sempre
 un JPEG ridimensionato, non l'originale HEIC. Gli originali sul telefono non
 vengono modificati.
 
-- **10"**: 825 × 1200 pixel, scala di grigi, cartella `/portrait`.
+- **10"**: 825 × 1200 pixel, colori conservati nel JPEG sulla SD, cartella `/portrait`.
 - **6 Color**: 600 × 448 pixel, colori conservati, cartella `/landscape`.
 
 Le dimensioni sono comunicate dal dispositivo usando la risoluzione effettiva
 del display dopo la rotazione: non vanno selezionate manualmente sul telefono.
-Il display applica il proprio dithering quando legge il JPEG.
+Il display applica il proprio dithering quando legge il JPEG. Sul modello 10"
+la visualizzazione rimane in scala di grigi, mentre il file e l'anteprima sul
+telefono mantengono i colori. Restano il ridimensionamento e l'eventuale ritaglio
+scelto nell'anteprima; non si conserva una copia identica dell'originale HEIC/PNG.
 
 ## Ordine di visualizzazione delle foto
 

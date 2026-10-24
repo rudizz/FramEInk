@@ -174,14 +174,19 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
         drawBattery();
         if (model.hasCalendar)
             drawCalendarName(model.calendar);
-        drawGrid();
         drawCalendarSize(model.calendar);
         drawTime();
 
-        if (model.hasCalendar)
-            drawCalendarData(model.calendar);
-
-        drawWeatherStrip(model.weather);
+        // Paint complete, opaque rows from top to bottom. A long event can
+        // extend below its cell; the next row must cover it before drawing its
+        // own day headers, weather and events, regardless of event array order.
+        for (int row = 0; row < rows_; ++row)
+        {
+            drawGrid(row);
+            if (model.hasCalendar)
+                drawCalendarData(model.calendar, row);
+            drawWeatherStrip(model.weather, row);
+        }
 
         if (rows_ < 2)
         {
@@ -287,32 +292,26 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
         display_.printf("CalendarSize: %ld", calendar.downloadSize);
     }
 
-    void drawGrid()
+    void drawGrid(int row)
     {
         const int x1 = marginLeft_;
-        const int y1 = headerCalendarName_ + marginUp_;
+        const int y1 = headerCalendarName_ + marginUp_ + row * cellHeight_;
         const int x2 = width_ - marginRight_;
-        const int y2 = height_ - heightPhoto_ - marginDown_;
+        const int y2 = y1 + cellHeight_;
 
-        for (int i = 0; i < rows_; i++)
+        // The patterned header and glyphs have transparent gaps, so repaint
+        // the entire row, including empty days and the weather strip, first.
+        display_.fillRect(0, y1, width_, cellHeight_, 7);
+        for (int headerY = 0; headerY < headerDay_; headerY += light_gray_h)
         {
-            for (size_t row = 0; row < headerDay_; row += light_gray_h)
-            {
-                for (size_t col = 0; col < static_cast<size_t>(x2); col += light_gray_w)
-                    frameink::drawBitmap3Bit(display_, x1 + col, y1 + row + static_cast<float>(i) * static_cast<float>(y2 - y1) / static_cast<float>(rows_), light_gray, light_gray_w, light_gray_h);
-            }
-            display_.fillRect(x1, static_cast<int>(static_cast<float>(y1) + headerDay_ - thickLineGrid_ + static_cast<float>(i) * static_cast<float>(y2 - y1) / static_cast<float>(rows_)), x2 - x1, thickLineGrid_, 6);
+            for (size_t col = 0; col < static_cast<size_t>(x2); col += light_gray_w)
+                frameink::drawBitmap3Bit(display_, x1 + col, y1 + headerY, light_gray, light_gray_w, light_gray_h);
         }
+        display_.fillRect(x1, y1 + headerDay_ - thickLineGrid_, x2 - x1, thickLineGrid_, 6);
 
-        for (int i = 0; i < rows_ + 1; ++i)
+        for (int edgeY : {y1, y2})
         {
-            display_.drawThickLine(
-                x1,
-                static_cast<int>(static_cast<float>(y1) + static_cast<float>(i) * static_cast<float>(y2 - y1) / static_cast<float>(rows_)),
-                x2,
-                static_cast<int>(static_cast<float>(y1) + static_cast<float>(i) * static_cast<float>(y2 - y1) / static_cast<float>(rows_)),
-                colorGrid_,
-                thickLineGrid_);
+            display_.drawThickLine(x1, edgeY, x2, edgeY, colorGrid_, thickLineGrid_);
         }
         for (int i = 0; i < columns_ + 1; ++i)
         {
@@ -325,8 +324,9 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
                 thickLineGrid_);
         }
 
+        display_.setTextColor(0, 7);
         display_.setFont(&FreeSansBold12pt7b);
-        for (int i = 0; i < columns_ * rows_; ++i)
+        for (int i = row * columns_; i < (row + 1) * columns_; ++i)
         {
             time_t dayEpoch = time(nullptr) + currentTimeZoneSeconds_ + i * 3600L * 24;
             struct tm timeinfo;
@@ -338,7 +338,7 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
 
             display_.setCursor(
                 70 + static_cast<int>(static_cast<float>(x1) + static_cast<float>(i % columns_) * static_cast<float>(x2 - x1) / static_cast<float>(columns_)),
-                y1 + headerDay_ - 13 + static_cast<int>(i / columns_) * static_cast<float>(y2 - y1) / static_cast<float>(rows_));
+                y1 + headerDay_ - 13);
             display_.println(temp);
         }
     }
@@ -386,7 +386,7 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
         return display_.getCursorY() < maxHeight - 100;
     }
 
-    void drawCalendarData(const frameink::CalendarAgenda &calendar)
+    void drawCalendarData(const frameink::CalendarAgenda &calendar, int row)
     {
         int columns[columns_ * rows_] = { 0 };
         bool clogged[columns_ * rows_] = { 0 };
@@ -395,7 +395,7 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
         for (int i = 0; i < calendar.eventCount; ++i)
         {
             const EventClass &event = calendar.events[i];
-            if (event.day < 0 || event.day >= columns_ * rows_)
+            if (event.day < row * columns_ || event.day >= (row + 1) * columns_)
                 continue;
             if (clogged[event.day])
                 ++cloggedCount[event.day];
@@ -417,7 +417,7 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
                 clogged[event.day] = 1;
         }
 
-        for (int i = 0; i < columns_ * rows_; ++i)
+        for (int i = row * columns_; i < (row + 1) * columns_; ++i)
         {
             if (clogged[i] && cloggedCount[i] > 0)
             {
@@ -521,13 +521,13 @@ class FramEink10Renderer : public frameink::IApplicationRenderer
         frameink::drawBitmap3Bit(display_, x, y - h * 1.3f + offsetYIcon, icon_drop, icon_drop_w, icon_drop_h);
     }
 
-    void drawWeatherStrip(const frameink::WeatherForecast &weather)
+    void drawWeatherStrip(const frameink::WeatherForecast &weather, int row)
     {
         const int padLeft = 15;
         const int padUp = -1;
         const int padDown = 5;
 
-        for (int dayIndex = 0; dayIndex < columns_ * rows_; dayIndex++)
+        for (int dayIndex = row * columns_; dayIndex < (row + 1) * columns_; ++dayIndex)
         {
             const frameink::WeatherDayForecast &day = weather.days[dayIndex];
             const int xBegin = marginLeft_ + cellWidth_ * (dayIndex % columns_) + padLeft;

@@ -15,6 +15,7 @@ from pathlib import Path
 import mimetypes
 import os
 import tempfile
+import time
 from urllib.parse import parse_qs
 
 WEB = Path(__file__).resolve().parents[1] / "FramEink.Core/web"
@@ -48,6 +49,7 @@ def main():
     parser.add_argument("--force-heic", action="store_true", help="Exercise the offline decoder even in Safari with native HEIC support")
     parser.add_argument("--seed-photo", type=Path, help="Copy a JPEG fixture into the disposable test gallery")
     parser.add_argument("--seed-count", type=int, default=23)
+    parser.add_argument("--save-delay", type=float, default=0, help="Simulate a slow SD save, in seconds, for progress UI checks")
     args = parser.parse_args()
     portrait = args.model == "10"
     device = {"name": "FramEInk 10" if portrait else "FramEInk 6 Color",
@@ -182,6 +184,8 @@ def main():
                 while (output / f"{prefix}{index:03}.jpg").exists():
                     index += 1
                 path = output / f"{prefix}{index:03}.jpg"
+                if args.save_delay > 0:
+                    time.sleep(args.save_delay)
                 path.write_bytes(jpeg)
                 if uploaded:
                     os.utime(path, (uploaded.timestamp(), uploaded.timestamp()))

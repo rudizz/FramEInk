@@ -61,6 +61,44 @@ function status(id, message, kind = "") {
   element.className = "status " + kind;
 }
 
+function photoProgress(title, detail, value = null, dismissible = false, kind = "") {
+  const panel = byId("photo-transfer");
+  panel.hidden = false;
+  panel.className = "photo-transfer " + kind;
+  byId("transfer-title").textContent = title;
+  byId("transfer-detail").textContent = detail;
+  byId("dismiss-progress").hidden = !dismissible;
+  const progress = byId("progress");
+  progress.hidden = kind === "error";
+  if (value === null) progress.removeAttribute("value");
+  else progress.value = Math.max(0, Math.min(100, value));
+  byId("transfer-percent").textContent = value === null ? "" : Math.floor(progress.value) + "%";
+}
+
+function hidePhotoProgress() {
+  byId("photo-transfer").hidden = true;
+  byId("progress").hidden = true;
+}
+
+function photoNumber() {
+  return "Photo " + (currentIndex + 1) + " of " + queue.length;
+}
+
+function formatTransferBytes(bytes) {
+  return bytes >= 1024 * 1024 ? (bytes / (1024 * 1024)).toFixed(1) + " MB" :
+    bytes >= 1024 ? Math.round(bytes / 1024) + " KB" : bytes + " B";
+}
+
+// Leave a rendered frame between showing the status and decoding the image.
+// The timer also lets background/captive views proceed if animation frames stop.
+const paintPhotoProgress = () => new Promise(resolve => {
+  const timeout = setTimeout(resolve, 150);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    clearTimeout(timeout);
+    resolve();
+  }));
+});
+
 async function request(path, options = {}) {
   const response = await fetch(path, {cache: "no-store", ...options});
   if (!response.ok) throw new Error(await response.text() || "Communication error.");
@@ -114,6 +152,8 @@ async function decodePhoto(file) {
   } catch (nativeError) {
     if (!await isHeic(file)) throw nativeError;
     status("photo-status", "Converting HEIC on your phone… The first conversion may take a few seconds.");
+    photoProgress("Converting " + photoNumber().toLowerCase(), file.name + " · Converting HEIC on your phone. Please wait…");
+    await paintPhotoProgress();
     if (!heicModule) heicModule = import("/heic-to.js").catch(error => { heicModule = null; throw error; });
     const decoder = await heicModule;
     let timeout;
@@ -155,14 +195,8 @@ function drawPreview() {
     -sourceImage.naturalWidth * scale / 2, -sourceImage.naturalHeight * scale / 2,
     sourceImage.naturalWidth * scale, sourceImage.naturalHeight * scale);
   context.restore();
-  if (device.grayscale) {
-    const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-    for (let i = 0; i < pixels.data.length; i += 4) {
-      const gray = Math.round(0.299 * pixels.data[i] + 0.587 * pixels.data[i + 1] + 0.114 * pixels.data[i + 2]);
-      pixels.data[i] = pixels.data[i + 1] = pixels.data[i + 2] = gray;
-    }
-    context.putImageData(pixels, 0, 0);
-  }
+  // Keep the photo's colors in the preview and SD JPEG on both models.
+  // Inkplate 10 applies grayscale/dithering only when it draws the saved JPEG.
   byId("zoom-value").textContent = Math.round(zoom * 100) + "%";
 }
 
@@ -170,10 +204,11 @@ async function showCurrent() {
   sourceImage = null;
   canvas.width = canvas.height = 1;
   byId("editor").hidden = true;
-  byId("progress").hidden = true;
   if (currentIndex >= queue.length) {
     byId("queue-info").textContent = "Selection complete. You can add more photos or tap Finish.";
     status("photo-status", savedCount ? savedCount + " photo(s) saved to the SD card." : "No photos uploaded.", savedCount ? "success" : "");
+    if (savedCount) photoProgress("Photos saved to the SD card", savedCount + " photo(s) saved. You can select more photos or tap Finish.", 100, true, "success");
+    else hidePhotoProgress();
     setBusy(false);
     return;
   }
@@ -181,7 +216,9 @@ async function showCurrent() {
   const file = queue[currentIndex];
   byId("queue-info").textContent = "Photo " + (currentIndex + 1) + " of " + queue.length + " · " + file.name;
   status("photo-status", "Preparing the preview…");
+  photoProgress("Preparing " + photoNumber().toLowerCase(), file.name + " · Preparing the color preview on your phone…");
   try {
+    await paintPhotoProgress();
     if (file.size > 40 * 1024 * 1024) throw new Error("The photo exceeds 40 MB. Choose a smaller version.");
     sourceImage = await decodePhoto(file);
     rotation = 0;
@@ -190,9 +227,11 @@ async function showCurrent() {
     drawPreview();
     byId("editor").hidden = false;
     status("photo-status", "Ready: " + device.width + " × " + device.height + " pixels · JPEG. Check the preview and tap Upload photo.");
+    hidePhotoProgress();
   } catch (error) {
     byId("editor").hidden = false;
     status("photo-status", "Unable to prepare this photo: " + (error.message || String(error)) + "\nYou can skip it or select another image.", "error");
+    photoProgress("Unable to prepare this photo", error.message || String(error), null, true, "error");
   } finally {
     setBusy(false);
     byId("upload").disabled = !sourceImage;
@@ -211,6 +250,10 @@ function jpegBlob() {
 
 function transferPhoto(blob, name) {
   return new Promise((resolve, reject) => {
+    const number = photoNumber().toLowerCase();
+    photoProgress("Transferring " + number + " to the SD card", name + " · Starting transfer…", 0);
+    const saving = () => photoProgress("Saving " + number + " to the SD card",
+      name + " · Transfer sent. Waiting for the frame to confirm the save…", 100);
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/photos");
     const now = new Date();
@@ -221,14 +264,26 @@ function transferPhoto(blob, name) {
       pad(now.getDate()) + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds()) + pad(now.getMilliseconds(), 3));
     xhr.timeout = 120000;
     xhr.upload.onprogress = event => {
-      if (event.lengthComputable) byId("progress").value = 100 * event.loaded / event.total;
+      if (event.lengthComputable && event.total > 0) {
+        if (event.loaded >= event.total) saving();
+        else photoProgress("Transferring " + number + " to the SD card",
+          name + " · " + formatTransferBytes(event.loaded) + " of " + formatTransferBytes(event.total),
+          100 * event.loaded / event.total);
+      } else photoProgress("Transferring " + number + " to the SD card",
+        name + " · " + formatTransferBytes(event.loaded) + " sent…");
     };
+    xhr.upload.onload = saving;
     xhr.onerror = () => reject(new Error("Connection interrupted. Check that you are still connected to FramEInk WiFi."));
     xhr.ontimeout = () => reject(new Error("Transfer timed out. Please try again."));
+    xhr.onabort = () => reject(new Error("Transfer cancelled. The save was not confirmed."));
     xhr.onload = () => {
       if (xhr.status !== 201) reject(new Error(xhr.responseText || "Unable to save the photo."));
       else {
-        try { resolve(JSON.parse(xhr.responseText)); }
+        try {
+          const result = JSON.parse(xhr.responseText);
+          photoProgress("Photo saved to the SD card", name + " · Save confirmed by FramEInk.", 100, false, "success");
+          resolve(result);
+        }
         catch (_) { reject(new Error("Unexpected device response. Check whether the photo was saved before trying again.")); }
       }
     };
@@ -238,9 +293,17 @@ function transferPhoto(blob, name) {
   });
 }
 
+byId("dismiss-progress").addEventListener("click", () => {
+  if (!busy) hidePhotoProgress();
+});
+// Keep native picker activation untouched: no progress or layout changes on
+// pointerdown/click/focus. iOS may return files only after its own preparation;
+// change is the first reliable indication that a selection was confirmed.
 byId("files").addEventListener("change", async event => {
   if (busy || closed) return;
-  queue = Array.from(event.target.files || []);
+  const selection = Array.from(event.target.files || []);
+  if (!selection.length) { hidePhotoProgress(); return; }
+  queue = selection;
   currentIndex = 0;
   event.target.value = "";
   await showCurrent();
@@ -254,10 +317,10 @@ byId("skip").addEventListener("click", async () => { currentIndex++; await showC
 byId("upload").addEventListener("click", async () => {
   if (busy || !sourceImage || closed) return;
   setBusy(true);
-  byId("progress").hidden = false;
-  byId("progress").value = 0;
-  status("photo-status", "Uploading and saving to the SD card…");
+  photoProgress("Preparing " + photoNumber().toLowerCase() + " for transfer", queue[currentIndex].name + " · Creating the color JPEG on your phone…");
+  status("photo-status", "Preparing the JPEG, then transferring and saving it to the SD card…");
   try {
+    await paintPhotoProgress();
     const blob = await jpegBlob();
     if (blob.size > device.maxPhotoBytes) throw new Error("JPEG too large for this device.");
     const result = await transferPhoto(blob, queue[currentIndex].name);
@@ -270,7 +333,7 @@ byId("upload").addEventListener("click", async () => {
     await showCurrent();
   } catch (error) {
     status("photo-status", error.message || String(error), "error");
-    byId("progress").hidden = true;
+    photoProgress("Photo upload not confirmed", error.message || String(error), null, true, "error");
     setBusy(false);
   }
 });
@@ -670,7 +733,8 @@ byId("delete-photos").addEventListener("click", async () => {
     byId("gallery-sort").value = gallerySort;
     byId("gallery-order").value = galleryOrder;
     byId("settings").open = !settings.ssid;
-    byId("device").textContent = device.name + " · " + device.width + " × " + device.height + " px" + (device.grayscale ? " · grayscale" : " · color");
+    byId("device").textContent = device.name + " · " + device.width + " × " + device.height + " px" +
+      (device.grayscale ? " · grayscale display · color photos on SD" : " · color");
     byId("gallery-folder").textContent = "SD card · " + device.directory + ". View photos or select them for deletion.";
     if (!device.sdReady) {
       status("photo-status", "SD card unavailable. Insert it and restart the frame.", "error");

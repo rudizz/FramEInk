@@ -10,7 +10,7 @@ class Element {
     Object.assign(this, {tag, children: [], listeners: {}, textContent: "", mockVisible: false, classList: {toggle() {}}});
   }
   addEventListener(name, handler) { this.listeners[name] = handler; }
-  setAttribute() {}
+  setAttribute(name, value) { this[name] = value; }
   removeAttribute(name) { delete this[name]; }
   showModal() { this.open = true; }
   getContext() {
@@ -49,7 +49,8 @@ async function harness({withObserver = true, settings = {ssid: "Test WiFi"},
   const state = {photos: Array.from({length: 23}, (_, i) => ({id: "id" + i, name: "photo" + i + ".jpg", size: 1024,
       modified: new Date(Date.UTC(2026, 9, 12, 12) - i * 2000).toISOString().slice(0, 19)})),
     offsets: [], images: [], aborted: [], deleted: [], confirm: false, confirmations: [], failOffset: null,
-    frames: [], endVisibleAt: null, deferred: new Set(), revoked: [], observer: null, savedSettings: [], listQueries: [], uploads: []};
+    frames: [], endVisibleAt: null, deferred: new Set(), revoked: [], observer: null, savedSettings: [], listQueries: [], uploads: [],
+    uploadRequests: [], deferUploads: false, deferPaint: false};
   const documentListeners = {};
   const response = (body, ok = true) => ({ok, json: async () => body, text: async () => String(body), blob: async () => body});
   const document = {hidden: false, getElementById: byId, createElement: tag => new Element(tag),
@@ -77,11 +78,16 @@ async function harness({withObserver = true, settings = {ssid: "Test WiFi"},
       open(method, url) { assert.equal(method, "POST"); assert.equal(url, "/api/photos"); }
       setRequestHeader(key, value) { this.headers[key] = value; }
       send(body) { state.uploads.push({headers: this.headers, body: body.values});
-        this.status = 201; this.responseText = '{"path":"/landscape/test.jpg"}'; this.onload(); }
+        state.uploadRequests.push(this);
+        if (!state.deferUploads) this.complete(); }
+      complete(status = 201, text = '{"path":"/landscape/test.jpg"}') {
+        this.status = status; this.responseText = text; this.onload(); }
     },
     URL: {createObjectURL: () => "blob:thumbnail-" + state.images.length, revokeObjectURL: url => state.revoked.push(url)},
     requestAnimationFrame: callback => { state.frames.push(callback); return state.frames.length; },
-    setInterval: () => 1, clearInterval() {}, setTimeout: () => 1, clearTimeout() {},
+    setInterval: () => 1, clearInterval() {},
+    setTimeout: (callback, delay) => delay === 0 || (delay === 150 && !state.deferPaint) ? setImmediate(callback) : 1,
+    clearTimeout() {},
     fetch: async (url, options = {}) => {
       if (url === "/api/device") return response(target);
       if (url === "/api/settings") {
@@ -133,6 +139,7 @@ async function harness({withObserver = true, settings = {ssid: "Test WiFi"},
   byId("gallery-viewport").getBoundingClientRect = () => ({top: 100, bottom: 600, left: 0, right: 580});
   byId("gallery-end").getBoundingClientRect = () => ({top: jobs().length === state.endVisibleAt ? 500 : 2000,
     bottom: jobs().length === state.endVisibleAt ? 550 : 2050, left: 20, right: 550});
+  byId("photo-transfer").hidden = byId("progress").hidden = byId("editor").hidden = true;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../FramEink.Core/web/portal.js"), "utf8"), context);
   // Mock only decoding. Actual downloading, resize, cancellation and URL lifecycle run.
   vm.runInContext("loadImage = async () => ({naturalWidth: 600, naturalHeight: 448});", context);
@@ -166,6 +173,7 @@ async function harness({withObserver = true, settings = {ssid: "Test WiFi"},
 
 async function run() {
   await editorTests();
+  await photoProgressTests();
   await gallerySortingTests();
   const lazy = await harness();
   assert.equal(lazy.byId("nightPauseStart").value, "23:00");
@@ -393,7 +401,9 @@ async function editorTests() {
           if (fit === "contain") assert(width <= target.width + 1e-8 && height <= target.height + 1e-8);
           else assert(width >= target.width - 1e-8 && height >= target.height - 1e-8);
         }
-        assert.equal(calls.some(call => call[0] === "putImageData"), target.grayscale);
+        // The grayscale property describes the physical display. Both SD JPEGs
+        // and previews keep the source colors, including on Inkplate 10.
+        assert.equal(calls.some(call => call[0] === "getImageData" || call[0] === "putImageData"), false);
       }
     // A new queued photo resets zoom/pan; export is the same target-sized canvas.
     await editor.byId("files").listeners.change({target: {files: [{name: "phone.jpg", size: 100}], value: ""}});
@@ -408,6 +418,113 @@ async function editorTests() {
     assert.equal(editor.state.uploads[0].body.photo.value.type, "image/jpeg");
     assert.match(editor.state.uploads[0].headers["X-FramEInk-Upload-Time"], /^\d{17}$/);
   }
+}
+
+async function photoProgressTests() {
+  const editor = await harness({target: {name: "FramEInk 10", width: 825, height: 1200,
+    grayscale: true, sdReady: true, directory: "/portrait", maxPhotoBytes: 2 * 1024 * 1024}});
+  const state = expression => vm.runInContext(expression, editor.context);
+  const tick = () => new Promise(resolve => setImmediate(resolve));
+  const panel = editor.byId("photo-transfer");
+  const progress = editor.byId("progress");
+  const title = () => editor.byId("transfer-title").textContent;
+  const detail = () => editor.byId("transfer-detail").textContent;
+  assert.match(editor.byId("device").textContent, /grayscale display · color photos on SD/);
+  // Opening the source menu/library must not show progress, shift the page,
+  // disable the input or prevent the native picker's default action.
+  let prevented = false;
+  const nativeClick = {preventDefault() { prevented = true; }};
+  editor.byId("pick-label").listeners.pointerdown?.(nativeClick);
+  editor.byId("files").listeners.click?.(nativeClick);
+  assert.equal(panel.hidden, true);
+  assert.equal(editor.byId("files").disabled, false);
+  assert.equal(state("busy"), false);
+  assert.equal(prevented, false);
+  editor.byId("files").listeners.cancel?.();
+  assert.equal(panel.hidden, true);
+  assert.equal(state("queue.length"), 0);
+
+  let finishDecode;
+  editor.context.testDecode = () => new Promise(resolve => { finishDecode = resolve; });
+  vm.runInContext("loadImage = testDecode;", editor.context);
+  editor.state.deferPaint = true;
+  const selection = editor.byId("files").listeners.change({target: {
+    files: [{name: "first.jpg", size: 100}, {name: "second.jpg", size: 100}], value: ""}});
+  assert.equal(panel.hidden, false);
+  assert.match(title(), /Preparing photo 1 of 2/);
+  assert.equal(progress.value, undefined);
+  assert.equal(editor.byId("finish").disabled, true);
+  assert.equal(editor.byId("editor").hidden, true);
+  await tick();
+  assert.equal(finishDecode, undefined); // Preparation message paints first.
+  await editor.pump();
+  assert(finishDecode);
+  finishDecode({naturalWidth: 2000, naturalHeight: 1000});
+  await selection;
+  assert.equal(panel.hidden, true);
+  assert.equal(editor.byId("editor").hidden, false);
+  assert.equal(editor.byId("upload").disabled, false);
+  editor.state.deferPaint = false;
+  vm.runInContext("loadImage = async () => ({naturalWidth: 600, naturalHeight: 448});", editor.context);
+
+  // Cancelling a new picker must preserve the already-prepared queue/photo.
+  editor.byId("files").listeners.click?.(nativeClick);
+  editor.byId("files").listeners.cancel?.();
+  await editor.byId("files").listeners.change({target: {files: [], value: ""}});
+  assert.equal(state("queue.length"), 2);
+  assert(state("sourceImage !== null"));
+
+  editor.state.deferUploads = true;
+  const transfer = editor.click("upload");
+  assert.equal(panel.hidden, false);
+  assert.match(title(), /Preparing photo 1 of 2 for transfer/);
+  await tick();
+  const xhr = editor.state.uploadRequests[0];
+  assert(xhr);
+  assert.equal(progress.value, 0);
+  assert.equal(editor.byId("files").disabled, true);
+  xhr.upload.onprogress({lengthComputable: true, loaded: 1024, total: 4096});
+  assert.equal(progress.value, 25);
+  assert.equal(editor.byId("transfer-percent").textContent, "25%");
+  assert.match(detail(), /1 KB of 4 KB/);
+  xhr.upload.onprogress({lengthComputable: false, loaded: 2048});
+  assert.equal(progress.value, undefined);
+  assert.match(detail(), /2 KB sent/);
+  xhr.upload.onprogress({lengthComputable: true, loaded: 4096, total: 4096});
+  xhr.upload.onload();
+  assert.match(title(), /Saving photo 1 of 2/);
+  assert.match(detail(), /Waiting for the frame to confirm/);
+  assert.equal(progress.value, 100);
+  assert.equal(state("savedCount"), 0); // Sent bytes are not yet a confirmed save.
+  await editor.click("upload");
+  assert.equal(editor.state.uploadRequests.length, 1); // No double submission.
+  xhr.complete();
+  await transfer;
+  assert.equal(state("savedCount"), 1);
+  assert.equal(state("currentIndex"), 1);
+
+  // A timeout retains the current photo, shows a stable error, and allows retry.
+  const timeout = editor.click("upload");
+  await tick();
+  editor.state.uploadRequests[1].ontimeout();
+  await timeout;
+  assert.match(title(), /not confirmed/);
+  assert.match(detail(), /timed out/);
+  assert.equal(progress.hidden, true);
+  assert.equal(panel.hidden, false);
+  assert.equal(state("savedCount"), 1);
+  assert.equal(state("currentIndex"), 1);
+  assert.equal(editor.byId("upload").disabled, false);
+  editor.state.deferUploads = false;
+  await editor.click("upload");
+  assert.equal(state("savedCount"), 2);
+  assert.match(title(), /Photos saved to the SD card/);
+  assert.equal(progress.value, 100);
+  assert.equal(panel.hidden, false);
+  assert.equal(editor.byId("dismiss-progress").hidden, false);
+  editor.click("dismiss-progress");
+  assert.equal(panel.hidden, true);
+  console.log("Portal uploads: picker/decoding, byte progress, SD acknowledgement, timeout/retry, queue and original colors passed.");
 }
 module.exports = {run};
 if (require.main === module) run().catch(error => { console.error(error); process.exitCode = 1; });
