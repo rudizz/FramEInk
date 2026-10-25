@@ -1,8 +1,8 @@
 {
     "configuration": "PartitionScheme=huge_app,FlashMode=qio,FlashFreq=80,UploadSpeed=460800,DebugLevel=none",
-    "board": "Inkplate_Boards:esp32:Inkplate6COLOR",
+    "board": "Inkplate_Boards:esp32:Inkplate10",
     "port": "/dev/tty.usbserial-110",
-    "sketch": "FramEink_6Color/FramEink_6Color.ino",
+    "sketch": "FramEink/FramEink.ino",
     "output": ".build/inkplate10",
     "prebuild": "python3 tools/board_guard.py vscode-preflight"
 }

@@ -61,7 +61,8 @@ inline bool parseWeather(char *data, size_t size, WeatherForecast &forecast)
         weatherNumber(day.maximumTemperature, source["temp"]["max"], -100, 100);
         weatherNumber(day.precipitationProbability, source["pop"], 0, 100, 0, 100);
         const float pop = source["pop"].as<float>();
-        day.hasPrecipitation = std::isfinite(pop) && pop > 0 && pop <= 1;
+        const bool isRainOrSnow = strcmp(condition, "Rain") == 0 || strcmp(condition, "Snow") == 0;
+        day.hasPrecipitation = isRainOrSnow && std::isfinite(pop) && pop > 0 && pop <= 1;
         const JsonVariantConst precipitation = source[strcmp(icon, "13d") == 0 ? "snow" : "rain"];
         if (precipitation.isNull()) snprintf(day.precipitationMillimeters, sizeof(day.precipitationMillimeters), "0.0");
         else weatherNumber(day.precipitationMillimeters, precipitation, 0, 9999,
